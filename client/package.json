@@ -55,8 +55,8 @@
       "git add"
     ]
   },
-  "name": "file-manager",
-  "version": "0.0.0",
+  "name": "@openfinder/client",
+  "version": "0.0.1",
   "description": "Webcomponent file-manager following open-wc recommendations",
   "author": "file-manager",
   "license": "MIT",
