@@ -9,7 +9,7 @@ import {
 
 @customElement('file-directories')
 export class Directories extends LitElement {
-  @property() dirs: any;
+  @property() dirs: any;  @property({type:String}) serverURL: string = "";
   @query('vaadin-grid') grid: any;
   static styles = css`
     :host {
@@ -22,7 +22,7 @@ export class Directories extends LitElement {
   `;
   async getDirs(context: string) {
     const res = await fetch(
-      `http://localhost:3000/directory?context=${context}`
+      `${this.serverURL}/directory?context=${context}`
     );
     return await res.json();
   }

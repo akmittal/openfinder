@@ -1,21 +1,18 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, Router } from "express";
 import multer, { FileFilterCallback } from "multer";
 import fs, { readdirSync } from "fs";
 import { join } from "path";
 import cors from "cors";
 import sharp from "sharp";
-import { Connection, createConnection } from "typeorm";
+import { Connection } from "typeorm";
 import mime from "mime";
 
-createConnection().then((connection) => {
-  bootstrap(connection);
-});
 
-function bootstrap(connection: Connection) {
-  const app = express();
-  const PORT = 3000;
-  const uploadPath = join(process.cwd(), "uploads");
-  app.use(cors());
+
+export function bootstrap(connection: Connection, uploadPath:string):Router {
+  const router = express.Router()
+
+  router.use(cors());
 
   function removeExtension(filename: string) {
     return filename.split(".").slice(0, -1).join(".");
@@ -36,11 +33,15 @@ function bootstrap(connection: Connection) {
         mime.getType(join(source, dirent.name))?.startsWith("image/")
     );
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  router.use(express.json());
+  router.use(express.urlencoded({ extended: true }));
 
   const storage = multer.diskStorage({
-    destination: async (req: Request & { destinationDir: string }, file, cb) => {
+    destination: async (
+      req: Request & { destinationDir: string },
+      file,
+      cb
+    ) => {
       let path: any = req.header("path") || "/";
       if (path === "undefined") {
         path = "/";
@@ -53,12 +54,15 @@ function bootstrap(connection: Connection) {
       req["destinationDir"] = resolvedPath;
       cb(null, resolvedPath);
     },
-    filename: (req :Request & { destinationDir:string, destinationPath:string}, file, cb) => {
-      
+    filename: (
+      req: Request & { destinationDir: string; destinationPath: string },
+      file,
+      cb
+    ) => {
       const filename = `${removeExtension(
         file.originalname
       )}-${Date.now()}.${getExtension(file.originalname)}`;
-      req.destinationPath = join(req.destinationDir, filename)
+      req.destinationPath = join(req.destinationDir, filename);
       cb(null, filename);
     },
   });
@@ -81,7 +85,7 @@ function bootstrap(connection: Connection) {
     fileFilter: fileFilter,
   });
 
-  app
+  router
     .route("/directory")
     .post((req, res) => {
       const { context, dir } = req.body;
@@ -103,7 +107,7 @@ function bootstrap(connection: Connection) {
       res.json({ data: dirs });
     });
 
-  app.route("/rename").post((req, res) => {
+  router.route("/rename").post((req, res) => {
     const { context, filename, newFilename } = req.body;
     const resolvedSource = join(uploadPath, context, filename);
     const resolvedTarget = join(uploadPath, context, newFilename);
@@ -111,7 +115,7 @@ function bootstrap(connection: Connection) {
     res.json({ msg: "done" });
   });
 
-  app
+  router
     .route("/file")
     .post(
       upload.single("file"),
@@ -163,10 +167,10 @@ function bootstrap(connection: Connection) {
       }
     });
 
-  app.post("/meta", async (req: Request, res: Response) => {
+  router.post("/meta", async (req: Request, res: Response) => {
     try {
       const { context, filename, description } = req.body;
-      const resolvedSource = join( context, filename);
+      const resolvedSource = join(context, filename);
 
       await writeDescription(resolvedSource, description);
       res.json({ done: true });
@@ -175,19 +179,21 @@ function bootstrap(connection: Connection) {
     }
   });
 
-  app.use("/static", express.static(uploadPath));
+  router.use("/static", express.static(uploadPath));
+ 
 
-  app.listen(PORT, () => {
-    console.info(`app running at port: ${PORT}`);
-  });
 
   async function readDescription(path: string) {
-    const res:any = await connection.getRepository("image").findOne({ where: { path } });
+    const res: any = await connection
+      .getRepository("image")
+      .findOne({ where: { path } });
     return res ? res.alt : "";
   }
 
   async function writeDescription(path: string, description: string) {
-    return connection.getRepository("image").update( { path } , {alt:description});
-
+    return connection
+      .getRepository("image")
+      .update({ path }, { alt: description });
   }
+  return router
 }

@@ -4,6 +4,7 @@ import { LitElement, html, css, property, customElement } from 'lit-element';
 export class Card extends LitElement {
   @property({ type: Object }) data: any = null;
   @property({ type: Boolean }) selected: boolean = false;
+  @property({ type: String }) serverURL: string = "";
 
   static styles = css`
     :host {
@@ -46,7 +47,7 @@ export class Card extends LitElement {
     return html`
       <div class=${`card ${this.selected ? 'active' : ''}`}>
         <img
-          src=${`http://localhost:3000/static${this.data.path}`}
+          src=${`${this.serverURL}/static${this.data.path}`}
           width="100%"
         />
         <div class="meta">

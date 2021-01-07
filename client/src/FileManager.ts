@@ -17,6 +17,7 @@ import '@vaadin/vaadin-lumo-styles';
 
 export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
+  @property({ type: String }) serverURL: string = '';
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
   @property({ type: Boolean }) appShown: boolean = true;
@@ -38,19 +39,17 @@ export class FileManager extends LitElement {
 
   async getFiles(context: string) {
     this.files = (
-      await (
-        await fetch(`http://localhost:3000/file?context=${context}`)
-      ).json()
+      await (await fetch(`${this.serverURL}/file?context=${context}`)).json()
     ).data;
   }
 
   static styles = css`
     :host {
-      position:fixed;
-      top:0;
-      left:0;
-      right:0;
-      bottom:0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -80,13 +79,12 @@ export class FileManager extends LitElement {
       border: 5px solid red;
       background-color: var(--lumo-base-color);
     }
-    .image-wrapper{
-      display:flex;
-      flex-direction:row;
-      flex-wrap:wrap;
-
+    .image-wrapper {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
     }
-    .image-wrapper > *{
+    .image-wrapper > * {
       flex: 0 0 calc(50% - 10px);
     }
     .selection {
@@ -101,27 +99,27 @@ export class FileManager extends LitElement {
       display: flex;
       justify-content: flex-end;
       padding: 0px 15px;
-      box-sizing:border-box;
+      box-sizing: border-box;
     }
-    .hidden{
-      display:none;
+    .hidden {
+      display: none;
     }
-    .content{
-      padding-bottom:80px;
+    .content {
+      padding-bottom: 80px;
     }
   `;
-  handleSubmit = () =>{
-    console.groupCollapsed({a:this.activeItem})
-const event = new CustomEvent("fm:mediaSelected", {
-  detail:this.activeItem
-})
-this.dispatchEvent(event)
-  }
-  handleCancel = () =>{
-    const event = new CustomEvent("fm:cancelled")
-    this.dispatchEvent(event)
+  handleSubmit = () => {
+    console.groupCollapsed({ a: this.activeItem });
+    const event = new CustomEvent('fm:mediaSelected', {
+      detail: this.activeItem,
+    });
+    this.dispatchEvent(event);
+  };
+  handleCancel = () => {
+    const event = new CustomEvent('fm:cancelled');
+    this.dispatchEvent(event);
     this.appShown = false;
-  }
+  };
   handleSelection = async (e: CustomEvent) => {
     this.context = e.detail;
     this.currentContext = 'dir';
@@ -130,7 +128,7 @@ this.dispatchEvent(event)
   };
   createNewSubFolder(folderName: string) {
     // console.log('a', this.context);
-    fetch('http://localhost:3000/directory', {
+    fetch(`${this.serverURL}/directory`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -142,7 +140,7 @@ this.dispatchEvent(event)
     });
   }
   rename = (data: any) => {
-    let url = 'http://localhost:3000/rename';
+    let url = `${this.serverURL}/rename`;
     let body = {
       context: this.context.path,
       filename: this.activeItem.name,
@@ -152,7 +150,7 @@ this.dispatchEvent(event)
     if (this.currentContext === 'dir') {
       body.context = body.context.split('/');
     } else {
-      url = 'http://localhost:3000/rename';
+      url = `${this.serverURL}/rename`;
     }
 
     fetch(url, {
@@ -167,7 +165,7 @@ this.dispatchEvent(event)
     this.searchTerm = e.target.value;
   };
   changeAlt = (description: string) => {
-    let url = 'http://localhost:3000/meta';
+    let url = `${this.serverURL}/meta`;
     let body = {
       context: this.context.path,
       filename: this.activeItem.name,
@@ -184,104 +182,111 @@ this.dispatchEvent(event)
 
   render() {
     return html`
-    <div class=${!this.appShown ? 'hidden':''}><vaadin-app-layout>
-        <input-modal
-          .opened=${this.inputModalState}
-          @onsubmit=${(evt: CustomEvent) => {
-            switch (this.inputModalType) {
-              case 'new-subfolder':
-                this.createNewSubFolder(evt.detail);
-                break;
-              case 'rename':
-                this.rename(evt.detail);
-                break;
-              case 'change-alt':
-                this.changeAlt(evt.detail);
-                break;
-            }
-            this.toggleInputModal();
-          }}
-        ></input-modal>
-        <vaadin-drawer-toggle slot="navbar"></vaadin-drawer-toggle>
-        <div
-          slot="navbar"
-          style="display:flex; justify-content:space-between; width:100%;"
-        >
-          <file-actions
-            context=${this.currentContext}
-            @onaction=${(e: CustomEvent) => {
-              switch (e.detail) {
+      <div class=${!this.appShown ? 'hidden' : ''}>
+        <vaadin-app-layout>
+          <input-modal
+            .opened=${this.inputModalState}
+            @onsubmit=${(evt: CustomEvent) => {
+              switch (this.inputModalType) {
                 case 'new-subfolder':
-                  this.inputModalType = e.detail;
-                  this.toggleInputModal();
+                  this.createNewSubFolder(evt.detail);
                   break;
                 case 'rename':
-                  this.inputModalType = e.detail;
-                  this.toggleInputModal();
+                  this.rename(evt.detail);
                   break;
                 case 'change-alt':
-                  this.inputModalType = e.detail;
-                  this.toggleInputModal();
+                  this.changeAlt(evt.detail);
                   break;
               }
+              this.toggleInputModal();
             }}
-          ></file-actions>
-          <div class="padding-x">
-            <vaadin-text-field
-              placeholder="Search..."
-              @input=${this.handleSearch}
-            ></vaadin-text-field>
-            <!-- <iron-icon icon="settings"></iron-icon> -->
-          </div>
-        </div>
-        <file-directories
-          slot="drawer"
-          @onselection=${this.handleSelection}
-        ></file-directories>
-
-        <div class="content flex flex-col">
-          <vaadin-upload
-            data-action="edit"
-            type="file"
-            accept="image/*"
-            target="http://localhost:3000/file"
-            .headers=${{ path: this.context.path }}
-            @upload-success=${this.onFileUpload}
+          ></input-modal>
+          <vaadin-drawer-toggle slot="navbar"></vaadin-drawer-toggle>
+          <div
+            slot="navbar"
+            style="display:flex; justify-content:space-between; width:100%;"
           >
-          </vaadin-upload>
-          <div class="image-wrapper">
-            ${this.files
-              .filter(file => {
-                if (!this.searchTerm) {
-                  return true;
-                } else {
-                  return file.name
-                    .toLowerCase()
-                    .includes(this.searchTerm.toLowerCase());
+            <file-actions
+              context=${this.currentContext}
+              @onaction=${(e: CustomEvent) => {
+                switch (e.detail) {
+                  case 'new-subfolder':
+                    this.inputModalType = e.detail;
+                    this.toggleInputModal();
+                    break;
+                  case 'rename':
+                    this.inputModalType = e.detail;
+                    this.toggleInputModal();
+                    break;
+                  case 'change-alt':
+                    this.inputModalType = e.detail;
+                    this.toggleInputModal();
+                    break;
                 }
-              })
-              .map(
-                file =>
-                  html`<file-card
-                    .data=${file}
-                    @click=${(e: Event) => {
-                      this.activeItem = file;
-                      this.currentContext = 'file';
-                    }}
-                    .selected=${this.activeItem === file}
-                  ></file-card>`
-              )}
+              }}
+            ></file-actions>
+            <div class="padding-x">
+              <vaadin-text-field
+                placeholder="Search..."
+                @input=${this.handleSearch}
+              ></vaadin-text-field>
+              <!-- <iron-icon icon="settings"></iron-icon> -->
+            </div>
           </div>
-        </div>
-      </vaadin-app-layout>
-      <div class="selection">
-        <div>
-          <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
-          <vaadin-button theme="primary" @click=${this.handleSubmit} .disabled=${!this.activeItem}>Submit</vaadin-button>
+          <file-directories
+            .serverURL=${this.serverURL}
+            slot="drawer"
+            @onselection=${this.handleSelection}
+          ></file-directories>
+
+          <div class="content flex flex-col">
+            <vaadin-upload
+              data-action="edit"
+              type="file"
+              accept="image/*"
+              .target=${`${this.serverURL}/file`}
+              .headers=${{ path: this.context.path }}
+              @upload-success=${this.onFileUpload}
+            >
+            </vaadin-upload>
+            <div class="image-wrapper">
+              ${this.files
+                .filter(file => {
+                  if (!this.searchTerm) {
+                    return true;
+                  } else {
+                    return file.name
+                      .toLowerCase()
+                      .includes(this.searchTerm.toLowerCase());
+                  }
+                })
+                .map(
+                  file =>
+                    html`<file-card
+                      .serverURL=${this.serverURL}
+                      .data=${file}
+                      @click=${(e: Event) => {
+                        this.activeItem = file;
+                        this.currentContext = 'file';
+                      }}
+                      .selected=${this.activeItem === file}
+                    ></file-card>`
+                )}
+            </div>
+          </div>
+        </vaadin-app-layout>
+        <div class="selection">
+          <div>
+            <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
+            <vaadin-button
+              theme="primary"
+              @click=${this.handleSubmit}
+              .disabled=${!this.activeItem}
+              >Submit</vaadin-button
+            >
+          </div>
         </div>
       </div>
-                  </div>
-                  
     `;
   }
 }
