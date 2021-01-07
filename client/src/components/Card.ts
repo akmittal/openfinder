@@ -8,9 +8,9 @@ export class Card extends LitElement {
   static styles = css`
     :host {
       box-sizing: border-box;
-      display: inline-block;
+      /* display: inline-block; */
       margin: 5px;
-      background-color: #f1f1f1;
+      background-color: #fff;
       border-radius: 5px;
       box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.1);
 
@@ -21,9 +21,10 @@ export class Card extends LitElement {
     }
     .active {
       padding: 7px;
-      border: 3px solid #0f0fca;
+      border: 3px solid hsl(214, 90%, 52%);
     }
     .meta {
+     
       font-size: 1rem;
       display: flex;
       flex-direction: column;
@@ -46,7 +47,7 @@ export class Card extends LitElement {
       <div class=${`card ${this.selected ? 'active' : ''}`}>
         <img
           src=${`http://localhost:3000/static${this.data.path}`}
-          width="400"
+          width="100%"
         />
         <div class="meta">
           <div class="title">${this.data.name}</div>

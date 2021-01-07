@@ -46,17 +46,14 @@ export class Actions extends LitElement {
           Rename
         </vaadin-button>
         <vaadin-button data-action="change-alt">
-          <iron-icon icon="edit" slot="prefix"></iron-icon>
-          Change Description
+          <iron-icon icon="lumo:edit" slot="prefix"></iron-icon>
+          Change Alt
         </vaadin-button>
               <vaadin-button data-action="view">
                 <iron-icon icon="lumo:edit" slot="prefix"></iron-icon>
                 View
               </vaadin-button>
-              <vaadin-button  data-action="download">
-                <iron-icon icon="lumo:edit" slot="prefix"></iron-icon>
-                Download
-              </vaadin-button>
+             
             `
           : ''}
       </div>

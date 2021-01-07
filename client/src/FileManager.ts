@@ -7,6 +7,7 @@ import './components/InputModal';
 import '@vaadin/vaadin-app-layout';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
+
 import '@vaadin/vaadin-upload';
 import '@vaadin/vaadin-grid';
 import '@vaadin/vaadin-grid/vaadin-grid-tree-column';
@@ -18,7 +19,7 @@ export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
-  @property({ type: Boolean }) appShown: boolean = false;
+  @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
   @property({ type: Object }) context: any = { path: '/' };
   @property({ type: Object }) activeItem: any = null;
@@ -45,6 +46,11 @@ export class FileManager extends LitElement {
 
   static styles = css`
     :host {
+      position:fixed;
+      top:0;
+      left:0;
+      right:0;
+      bottom:0;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -74,10 +80,19 @@ export class FileManager extends LitElement {
       border: 5px solid red;
       background-color: var(--lumo-base-color);
     }
+    .image-wrapper{
+      display:flex;
+      flex-direction:row;
+      flex-wrap:wrap;
+
+    }
+    .image-wrapper > *{
+      flex: 0 0 calc(50% - 10px);
+    }
     .selection {
       width: 100%;
       height: 50px;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgb(255, 255, 255);
       border-top: 1px;
       border-style: solid;
       border-color: #ccc;
@@ -87,6 +102,9 @@ export class FileManager extends LitElement {
       justify-content: flex-end;
       padding: 0px 15px;
       box-sizing:border-box;
+    }
+    .hidden{
+      display:none;
     }
     .content{
       padding-bottom:80px;
@@ -166,7 +184,7 @@ this.dispatchEvent(event)
 
   render() {
     return html`
-      <vaadin-app-layout>
+    <div class=${!this.appShown ? 'hidden':''}><vaadin-app-layout>
         <input-modal
           .opened=${this.inputModalState}
           @onsubmit=${(evt: CustomEvent) => {
@@ -187,7 +205,7 @@ this.dispatchEvent(event)
         <vaadin-drawer-toggle slot="navbar"></vaadin-drawer-toggle>
         <div
           slot="navbar"
-          style="display:flex; justify-content:space-between; width:100%"
+          style="display:flex; justify-content:space-between; width:100%;"
         >
           <file-actions
             context=${this.currentContext}
@@ -231,7 +249,7 @@ this.dispatchEvent(event)
             @upload-success=${this.onFileUpload}
           >
           </vaadin-upload>
-          <div class="">
+          <div class="image-wrapper">
             ${this.files
               .filter(file => {
                 if (!this.searchTerm) {
@@ -262,6 +280,8 @@ this.dispatchEvent(event)
           <vaadin-button theme="primary" @click=${this.handleSubmit} .disabled=${!this.activeItem}>Submit</vaadin-button>
         </div>
       </div>
+                  </div>
+                  
     `;
   }
 }
