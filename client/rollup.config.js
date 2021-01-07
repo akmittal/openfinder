@@ -19,20 +19,17 @@ const baseConfig = createSpaConfig({
   // set to true to inject the service worker registration into your index.html
   injectServiceWorker: false,
   workbox:false,
-  
+  polyfillsLoader:false,
+  html:false
 });
 
 export default merge(baseConfig, {
   // if you use createSpaConfig, you can use your index.html as entrypoint,
   // any <script type="module"> inside will be bundled by rollup
   input: './out-tsc/src/file-manager.js',
-  inlineDynamicImports: true,
- 
   output:{
-   
-     dir:"./dist",
-     file:"./dist/abc.js",
-    format:"es"
+    file: "./dist/bundle.js",
+    dir:undefined
   }
 
   // alternatively, you can use your JS as entrypoint for rollup and
