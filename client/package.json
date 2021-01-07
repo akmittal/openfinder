@@ -56,10 +56,11 @@
     ]
   },
   "name": "@openfinder/client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Webcomponent file-manager following open-wc recommendations",
   "author": "file-manager",
   "license": "MIT",
+  "module": "true",
   "proxy": "http://localhost:3000",
   "dependencies": {
     "@material/mwc-dialog": "^0.20.0",

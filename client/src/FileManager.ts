@@ -4,16 +4,16 @@ import './components/Actions';
 import './components/Directories';
 import './components/InputModal';
 
-import '@vaadin/vaadin-app-layout';
+
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 
 import '@vaadin/vaadin-upload';
 import '@vaadin/vaadin-grid';
 import '@vaadin/vaadin-grid/vaadin-grid-tree-column';
-import '@polymer/iron-icon/iron-icon.js';
-import '@polymer/iron-icons/iron-icons.js';
-import '@vaadin/vaadin-lumo-styles';
+import '@polymer/iron-icon/iron-icon';
+import '@polymer/iron-icons/iron-icons';
+
 
 export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
@@ -45,28 +45,35 @@ export class FileManager extends LitElement {
 
   static styles = css`
     :host {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      min-height: 100vh;
-      display: flex;
+      position: relative;
+      background:#f1f1f1;
+      max-height: 100vh;
+      overflow: scroll;
+      display: block;
+      position: relative;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
       font-size: calc(10px + 2vmin);
       color: #1a2b42;
-      max-width: 960px;
+
       margin: 0 auto;
       /* text-align: center; */
+    }
+    .main {
+      
+      display: flex;
+      position:relative;
+      
+    }
+    .drawer {
+      flex: 0 0 25%;
+      min-width: 200px;
     }
     .padding-x {
       padding: 0px 10px;
     }
-    .image-container {
-      background-color: #fff;
-    }
+   
 
     .flex {
       display: flex;
@@ -80,6 +87,7 @@ export class FileManager extends LitElement {
       background-color: var(--lumo-base-color);
     }
     .image-wrapper {
+      
       display: flex;
       flex-direction: row;
       flex-wrap: wrap;
@@ -94,23 +102,33 @@ export class FileManager extends LitElement {
       border-top: 1px;
       border-style: solid;
       border-color: #ccc;
-      position: fixed;
+      position: absolute;
       bottom: 0;
+      left: 0;
       display: flex;
       justify-content: flex-end;
       padding: 0px 15px;
       box-sizing: border-box;
     }
+    .app-layout {
+      display: flex;
+      flex-direction: column;
+    }
     .hidden {
       display: none;
     }
     .content {
+      padding:10px;
+      background-color:#fff;
       padding-bottom: 80px;
+      display: flex;
+      align-items: center;
+      width: 100%;
     }
   `;
   handleSubmit = () => {
-    console.groupCollapsed({ a: this.activeItem });
-    const event = new CustomEvent('fm:mediaSelected', {
+    console.log({ a: this.activeItem });
+    const event = new CustomEvent('mediaselected', {
       detail: this.activeItem,
     });
     this.dispatchEvent(event);
@@ -183,7 +201,7 @@ export class FileManager extends LitElement {
   render() {
     return html`
       <div class=${!this.appShown ? 'hidden' : ''}>
-        <vaadin-app-layout>
+        <div class="app-layout">
           <input-modal
             .opened=${this.inputModalState}
             @onsubmit=${(evt: CustomEvent) => {
@@ -201,10 +219,9 @@ export class FileManager extends LitElement {
               this.toggleInputModal();
             }}
           ></input-modal>
-          <vaadin-drawer-toggle slot="navbar"></vaadin-drawer-toggle>
+
           <div
-            slot="navbar"
-            style="display:flex; justify-content:space-between; width:100%;"
+            style="display:flex; justify-content:space-between; width:100%; border-bottom:1px; border-style:solid; border-color:#d1d1d1;"
           >
             <file-actions
               context=${this.currentContext}
@@ -233,57 +250,62 @@ export class FileManager extends LitElement {
               <!-- <iron-icon icon="settings"></iron-icon> -->
             </div>
           </div>
-          <file-directories
-            .serverURL=${this.serverURL}
-            slot="drawer"
-            @onselection=${this.handleSelection}
-          ></file-directories>
+          <div class="main">
+            <file-directories
+              .serverURL=${this.serverURL}
+              class="drawer"
+              @onselection=${this.handleSelection}
+            ></file-directories>
 
-          <div class="content flex flex-col">
-            <vaadin-upload
-              data-action="edit"
-              type="file"
-              accept="image/*"
-              .target=${`${this.serverURL}/file`}
-              .headers=${{ path: this.context.path }}
-              @upload-success=${this.onFileUpload}
-            >
-            </vaadin-upload>
-            <div class="image-wrapper">
-              ${this.files
-                .filter(file => {
-                  if (!this.searchTerm) {
-                    return true;
-                  } else {
-                    return file.name
-                      .toLowerCase()
-                      .includes(this.searchTerm.toLowerCase());
-                  }
-                })
-                .map(
-                  file =>
-                    html`<file-card
-                      .serverURL=${this.serverURL}
-                      .data=${file}
-                      @click=${(e: Event) => {
-                        this.activeItem = file;
-                        this.currentContext = 'file';
-                      }}
-                      .selected=${this.activeItem === file}
-                    ></file-card>`
-                )}
+            <div class="content flex flex-col">
+              <vaadin-upload
+                data-action="edit"
+                type="file"
+                accept="image/*"
+                .target=${`${this.serverURL}/file`}
+                .headers=${{ path: this.context.path }}
+                @upload-success=${this.onFileUpload}
+              >
+              </vaadin-upload>
+              <div class="image-wrapper">
+                ${this.files
+                  .filter(file => {
+                    if (!this.searchTerm) {
+                      return true;
+                    } else {
+                      return file.name
+                        .toLowerCase()
+                        .includes(this.searchTerm.toLowerCase());
+                    }
+                  })
+                  .map(
+                    file =>
+                      html`<file-card
+                        .serverURL=${this.serverURL}
+                        .data=${file}
+                        @dblclick=${this.handleSubmit}
+                        @click=${(e: Event) => {
+                          this.activeItem = file;
+                          this.currentContext = 'file';
+                        }}
+                        .selected=${this.activeItem === file}
+                      ></file-card>`
+                  )}
+              </div>
             </div>
-          </div>
-        </vaadin-app-layout>
-        <div class="selection">
-          <div>
-            <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
-            <vaadin-button
-              theme="primary"
-              @click=${this.handleSubmit}
-              .disabled=${!this.activeItem}
-              >Submit</vaadin-button
-            >
+            <div class="selection">
+              <div>
+                <vaadin-button @click=${this.handleCancel}
+                  >Cancel</vaadin-button
+                >
+                <vaadin-button
+                  theme="primary"
+                  @click=${this.handleSubmit}
+                  .disabled=${!this.activeItem}
+                  >Submit</vaadin-button
+                >
+              </div>
+            </div>
           </div>
         </div>
       </div>

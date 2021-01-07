@@ -6,7 +6,6 @@ import {
   property,
   query,
 } from 'lit-element';
-import { render } from 'lit-html';
 import '@vaadin/vaadin-button';
 import '@material/mwc-dialog';
 

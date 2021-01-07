@@ -1,6 +1,6 @@
 {
   "name": "@openfinder/server",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,6 +9,7 @@
   },
   "keywords": [],
   "author": "",
+  "module": "true",
   "license": "ISC",
   "devDependencies": {
     "typescript": "^4.1.3"
