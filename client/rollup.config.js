@@ -18,9 +18,9 @@ const baseConfig = createSpaConfig({
 
   // set to true to inject the service worker registration into your index.html
   injectServiceWorker: false,
-  // workbox: false,
-  // polyfillsLoader: false,
-  // html: false
+  workbox: false,
+  polyfillsLoader: false,
+  html: false
 });
 
 export default merge(baseConfig, {

@@ -8,13 +8,13 @@ import { Connection, createConnection } from "typeorm";
 import mime from "mime";
 
 
-// const app = express()
-// createConnection().then((connection) => {
-//   app.use("/", bootstrap(connection, resolve("./uploads")))
-//   app.listen(5000, () => {
-//     console.log("started")
-//   })
-// })
+const app = express()
+createConnection().then((connection) => {
+  app.use("/", bootstrap(connection, resolve("./uploads")))
+  app.listen(5000, () => {
+    console.log("started")
+  })
+})
 
 
 export function bootstrap(connection: Connection, uploadPath:string):Router {
