@@ -1,3 +1,4 @@
 node_modules/
 client/out-tsc
 server/uploads/
+client/dist

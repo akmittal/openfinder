@@ -9,7 +9,10 @@ import {
 
 @customElement('file-directories')
 export class Directories extends LitElement {
+  context: string = '';
   @property() dirs: any;
+  @property({ type: String }) serverURL: string = '';
+  @property({ type: Number, attribute: true }) changed: number = 0;
   @query('vaadin-grid') grid: any;
   static styles = css`
     :host {
@@ -20,10 +23,16 @@ export class Directories extends LitElement {
       background-color: transparent;
     }
   `;
+  attributeChangedCallback(name: string, old: any, newVal: any) {
+    super.attributeChangedCallback(name, old, newVal);
+
+    if (this.grid) {
+      this.grid.clearCache();
+    }
+  }
   async getDirs(context: string) {
-    const res = await fetch(
-      `http://localhost:3000/directory?context=${context}`
-    );
+    this.context = context;
+    const res = await fetch(`${this.serverURL}/directory?context=${context}`);
     return await res.json();
   }
   dataProvider = async (item: any, callback: Function) => {
@@ -70,7 +79,11 @@ export class Directories extends LitElement {
       aria-label="directories"
       style="background:transparent; border:0; min-height:calc(100vh - 50px)"
     >
-      <vaadin-grid-tree-column path="name" itemHasChildrenPath="children">
+      <vaadin-grid-tree-column
+        header=""
+        path="name"
+        itemHasChildrenPath="children"
+      >
       </vaadin-grid-tree-column>
     </vaadin-grid>`;
   }

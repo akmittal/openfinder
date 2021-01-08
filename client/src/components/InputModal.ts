@@ -6,7 +6,6 @@ import {
   property,
   query,
 } from 'lit-element';
-import { render } from 'lit-html';
 import '@vaadin/vaadin-button';
 import '@material/mwc-dialog';
 
@@ -24,6 +23,7 @@ export class InputModal extends LitElement {
   handleClick() {
     const event = new CustomEvent('onsubmit', { detail: this.input.value });
     this.dispatchEvent(event);
+    this.input.value = "";
   }
   // constructor(){
   //   super();

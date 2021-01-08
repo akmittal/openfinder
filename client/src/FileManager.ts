@@ -4,23 +4,24 @@ import './components/Actions';
 import './components/Directories';
 import './components/InputModal';
 
-import '@vaadin/vaadin-app-layout';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 
 import '@vaadin/vaadin-upload';
 import '@vaadin/vaadin-grid';
 import '@vaadin/vaadin-grid/vaadin-grid-tree-column';
-import '@polymer/iron-icon/iron-icon.js';
-import '@polymer/iron-icons/iron-icons.js';
-import '@vaadin/vaadin-lumo-styles';
+import '@polymer/iron-icon/iron-icon';
+import '@polymer/iron-icons/iron-icons';
 
 export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
+  @property({ type: String }) serverURL: string = '';
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
   @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
+  @property({ type: Number }) directryKey: number = 0;
+
   @property({ type: Object }) context: any = { path: '/' };
   @property({ type: Object }) activeItem: any = null;
   @property({ type: String }) currentContext = 'dir';
@@ -29,44 +30,58 @@ export class FileManager extends LitElement {
     this.inputModalState = !this.inputModalState;
   }
   onFileUpload = async (evt: CustomEvent) => {
-    this.getFiles(this.context.path);
+    this.reloadFiles();
   };
   connectedCallback() {
     super.connectedCallback();
     this.getFiles(this.context.path);
   }
+  async reloadFiles() {
+    this.getFiles(this.context.path);
+  }
 
   async getFiles(context: string) {
     this.files = (
-      await (
-        await fetch(`http://localhost:3000/file?context=${context}`)
-      ).json()
+      await (await fetch(`${this.serverURL}/file?context=${context}`)).json()
     ).data;
   }
 
   static styles = css`
     :host {
-      position:fixed;
-      top:0;
-      left:0;
-      right:0;
-      bottom:0;
-      min-height: 100vh;
-      display: flex;
+      position: relative;
+      background: #f1f1f1;
+      flex: 1 1 100%;
+
+      display: block;
+      position: relative;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
       font-size: calc(10px + 2vmin);
       color: #1a2b42;
-      max-width: 960px;
+
       margin: 0 auto;
       /* text-align: center; */
     }
+
+    .wrapper {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      border-bottom: 1px;
+      border-style: solid;
+      border-color: #d1d1d1;
+    }
+    .main {
+      display: flex;
+      position: relative;
+    }
+    .drawer {
+      flex: 0 0 25%;
+      min-width: 200px;
+    }
     .padding-x {
       padding: 0px 10px;
-    }
-    .image-container {
-      background-color: #fff;
     }
 
     .flex {
@@ -80,14 +95,14 @@ export class FileManager extends LitElement {
       border: 5px solid red;
       background-color: var(--lumo-base-color);
     }
-    .image-wrapper{
-      display:flex;
-      flex-direction:row;
-      flex-wrap:wrap;
-
+    .image-wrapper {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      overflow-y: scroll;
     }
-    .image-wrapper > *{
-      flex: 0 0 calc(50% - 10px);
+    .image-wrapper > * {
+      flex: 0 0 calc(25% - 15px);
     }
     .selection {
       width: 100%;
@@ -96,41 +111,72 @@ export class FileManager extends LitElement {
       border-top: 1px;
       border-style: solid;
       border-color: #ccc;
-      position: fixed;
+      position: absolute;
       bottom: 0;
+      left: 0;
       display: flex;
       justify-content: flex-end;
       padding: 0px 15px;
-      box-sizing:border-box;
+      box-sizing: border-box;
     }
-    .hidden{
-      display:none;
+    .app-layout {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      grid-template-areas:
+        'head head head'
+        'drawer main main'
+        'drawer footer footer';
+      grid-gap: 10px;
+      grid-template-rows: 50px 1fr 50px;
+      grid-template-columns: 250px 1fr;
     }
-    .content{
-      padding-bottom:80px;
+    .app-layout > .wrapper {
+      grid-area: head;
+    }
+    .app-layout > file-directories {
+      grid-area: drawer;
+    }
+    .app-layout > .selection {
+      grid-area: footer;
+    }
+    .hidden {
+      display: none;
+    }
+    .content {
+      grid-area: main;
+
+      overflow: hidden;
+      padding: 10px;
+      background-color: #fff;
+
+      display: flex;
+      align-items: center;
+      width: 100%;
     }
   `;
-  handleSubmit = () =>{
-    console.groupCollapsed({a:this.activeItem})
-const event = new CustomEvent("fm:mediaSelected", {
-  detail:this.activeItem
-})
-this.dispatchEvent(event)
-  }
-  handleCancel = () =>{
-    const event = new CustomEvent("fm:cancelled")
-    this.dispatchEvent(event)
+  handleSubmit = () => {
+ 
+    const event = new CustomEvent('mediaselected', {
+      detail: this.activeItem,
+    });
+    this.dispatchEvent(event);
+  };
+  handleCancel = () => {
+    const event = new CustomEvent('fm:cancelled');
+    this.dispatchEvent(event);
     this.appShown = false;
-  }
+  };
   handleSelection = async (e: CustomEvent) => {
     this.context = e.detail;
     this.currentContext = 'dir';
-    console.log(e);
+
     await this.getFiles(e.detail.path);
   };
-  createNewSubFolder(folderName: string) {
+
+  async createNewSubFolder(folderName: string) {
     // console.log('a', this.context);
-    fetch('http://localhost:3000/directory', {
+    return fetch(`${this.serverURL}/directory`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -141,21 +187,21 @@ this.dispatchEvent(event)
       }),
     });
   }
-  rename = (data: any) => {
-    let url = 'http://localhost:3000/rename';
+  rename = async (data: any) => {
+    let url = `${this.serverURL}/rename`;
     let body = {
       context: this.context.path,
       filename: this.activeItem.name,
       newFilename: data,
     };
-    console.log({ data, curr: this.currentContext });
+   
     if (this.currentContext === 'dir') {
       body.context = body.context.split('/');
     } else {
-      url = 'http://localhost:3000/rename';
+      url = `${this.serverURL}/rename`;
     }
 
-    fetch(url, {
+    return fetch(url, {
       method: 'POST',
       body: JSON.stringify(body),
       headers: { 'content-type': 'application/json' },
@@ -163,17 +209,33 @@ this.dispatchEvent(event)
   };
 
   handleSearch = (e: any) => {
-    console.log(this.searchTerm);
+
     this.searchTerm = e.target.value;
   };
-  changeAlt = (description: string) => {
-    let url = 'http://localhost:3000/meta';
+  handleFileAction = (e: CustomEvent) => {
+    switch (e.detail) {
+      case 'new-subfolder':
+        this.inputModalType = e.detail;
+        this.toggleInputModal();
+        break;
+      case 'rename':
+        this.inputModalType = e.detail;
+        this.toggleInputModal();
+        break;
+      case 'change-alt':
+        this.inputModalType = e.detail;
+        this.toggleInputModal();
+        break;
+    }
+  };
+   changeAlt = async (description: string) => {
+    let url = `${this.serverURL}/meta`;
     let body = {
       context: this.context.path,
       filename: this.activeItem.name,
       description,
     };
-    fetch(url, {
+    return fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -181,70 +243,58 @@ this.dispatchEvent(event)
       body: JSON.stringify(body),
     });
   };
+  handleInoutSelect = async (evt: CustomEvent) => {
+    switch (this.inputModalType) {
+      case 'new-subfolder':
+        await this.createNewSubFolder(evt.detail);
+        this.directryKey = Math.random();
+   
+        break;
+      case 'rename':
+        await this.rename(evt.detail);
+        this.reloadFiles()
+        break;
+      case 'change-alt':
+        await this.changeAlt(evt.detail);
+        this.reloadFiles()
+        break;
+    }
+    this.toggleInputModal();
+  };
 
   render() {
-    return html`
-    <div class=${!this.appShown ? 'hidden':''}><vaadin-app-layout>
-        <input-modal
-          .opened=${this.inputModalState}
-          @onsubmit=${(evt: CustomEvent) => {
-            switch (this.inputModalType) {
-              case 'new-subfolder':
-                this.createNewSubFolder(evt.detail);
-                break;
-              case 'rename':
-                this.rename(evt.detail);
-                break;
-              case 'change-alt':
-                this.changeAlt(evt.detail);
-                break;
-            }
-            this.toggleInputModal();
-          }}
-        ></input-modal>
-        <vaadin-drawer-toggle slot="navbar"></vaadin-drawer-toggle>
-        <div
-          slot="navbar"
-          style="display:flex; justify-content:space-between; width:100%;"
-        >
+    return html`<input-modal
+        .opened=${this.inputModalState}
+        @onsubmit=${this.handleInoutSelect}
+      ></input-modal>
+      <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
+        <div class="wrapper">
           <file-actions
             context=${this.currentContext}
-            @onaction=${(e: CustomEvent) => {
-              switch (e.detail) {
-                case 'new-subfolder':
-                  this.inputModalType = e.detail;
-                  this.toggleInputModal();
-                  break;
-                case 'rename':
-                  this.inputModalType = e.detail;
-                  this.toggleInputModal();
-                  break;
-                case 'change-alt':
-                  this.inputModalType = e.detail;
-                  this.toggleInputModal();
-                  break;
-              }
-            }}
+            @onaction=${this.handleFileAction}
           ></file-actions>
           <div class="padding-x">
             <vaadin-text-field
               placeholder="Search..."
               @input=${this.handleSearch}
             ></vaadin-text-field>
-            <!-- <iron-icon icon="settings"></iron-icon> -->
           </div>
         </div>
+
         <file-directories
-          slot="drawer"
+          changed=${this.directryKey}
+          .serverURL=${this.serverURL}
+          class="drawer"
           @onselection=${this.handleSelection}
         ></file-directories>
 
         <div class="content flex flex-col">
           <vaadin-upload
+            style="overflow:visible"
             data-action="edit"
             type="file"
             accept="image/*"
-            target="http://localhost:3000/file"
+            .target=${`${this.serverURL}/file`}
             .headers=${{ path: this.context.path }}
             @upload-success=${this.onFileUpload}
           >
@@ -263,7 +313,9 @@ this.dispatchEvent(event)
               .map(
                 file =>
                   html`<file-card
+                    .serverURL=${this.serverURL}
                     .data=${file}
+                    @dblclick=${this.handleSubmit}
                     @click=${(e: Event) => {
                       this.activeItem = file;
                       this.currentContext = 'file';
@@ -273,15 +325,17 @@ this.dispatchEvent(event)
               )}
           </div>
         </div>
-      </vaadin-app-layout>
-      <div class="selection">
-        <div>
-          <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
-          <vaadin-button theme="primary" @click=${this.handleSubmit} .disabled=${!this.activeItem}>Submit</vaadin-button>
-        </div>
-      </div>
-                  </div>
-                  
-    `;
+        <section class="selection">
+          <section>
+            <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
+            <vaadin-button
+              theme="primary"
+              @click=${this.handleSubmit}
+              .disabled=${!this.activeItem}
+              >Submit</vaadin-button
+            >
+          </section>
+        </section>
+      </div> `;
   }
 }

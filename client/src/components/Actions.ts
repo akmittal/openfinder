@@ -6,11 +6,14 @@ export class Actions extends LitElement {
 
   static styles = css`
     :host {
+      width:100%;
       display: inline-block;
     }
     vaadin-button{
       border:1px solid #ccc;
+      background-color:#fff;
     }
+    
   `;
 
   render() {
@@ -30,27 +33,27 @@ export class Actions extends LitElement {
         }}
       >
         <vaadin-button data-action="new-subfolder" class="border">
-          <iron-icon icon="lumo:edit" slot="prefix"></iron-icon>
+          <iron-icon icon="add" slot="prefix"></iron-icon>
           New Subfolder
         </vaadin-button>
-        <vaadin-button data-action="fullscreen">
+        <!-- <vaadin-button data-action="fullscreen">
           <iron-icon icon="fullscreen" slot="prefix"></iron-icon>
           Maximize
-        </vaadin-button>
+        </vaadin-button> -->
        
 
         ${this.context === 'file'
           ? html`
            <vaadin-button data-action="rename">
-          <iron-icon icon="fullscreen" slot="prefix"></iron-icon>
+          <iron-icon icon="find-replace" slot="prefix"></iron-icon>
           Rename
         </vaadin-button>
         <vaadin-button data-action="change-alt">
-          <iron-icon icon="lumo:edit" slot="prefix"></iron-icon>
+          <iron-icon icon="create" slot="prefix"></iron-icon>
           Change Alt
         </vaadin-button>
               <vaadin-button data-action="view">
-                <iron-icon icon="lumo:edit" slot="prefix"></iron-icon>
+                <iron-icon icon="visibility" slot="prefix"></iron-icon>
                 View
               </vaadin-button>
              
