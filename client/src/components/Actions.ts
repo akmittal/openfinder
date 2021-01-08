@@ -36,10 +36,10 @@ export class Actions extends LitElement {
           <iron-icon icon="add" slot="prefix"></iron-icon>
           New Subfolder
         </vaadin-button>
-        <vaadin-button data-action="fullscreen">
+        <!-- <vaadin-button data-action="fullscreen">
           <iron-icon icon="fullscreen" slot="prefix"></iron-icon>
           Maximize
-        </vaadin-button>
+        </vaadin-button> -->
        
 
         ${this.context === 'file'

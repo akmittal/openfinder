@@ -23,6 +23,7 @@ export class InputModal extends LitElement {
   handleClick() {
     const event = new CustomEvent('onsubmit', { detail: this.input.value });
     this.dispatchEvent(event);
+    this.input.value = "";
   }
   // constructor(){
   //   super();

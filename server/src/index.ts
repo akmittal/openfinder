@@ -1,12 +1,20 @@
 import express, { Request, Response, Router } from "express";
 import multer, { FileFilterCallback } from "multer";
 import fs, { readdirSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import cors from "cors";
 import sharp from "sharp";
-import { Connection } from "typeorm";  
+import { Connection, createConnection } from "typeorm";  
 import mime from "mime";
 
+
+// const app = express()
+// createConnection().then((connection) => {
+//   app.use("/", bootstrap(connection, resolve("./uploads")))
+//   app.listen(5000, () => {
+//     console.log("started")
+//   })
+// })
 
 
 export function bootstrap(connection: Connection, uploadPath:string):Router {
@@ -129,7 +137,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
           .values({
             name: req.file.originalname,
             path: req.destinationPath.replace(uploadPath, ""),
-            alt: "test",
+            alt: req.file.originalname,
             updateDate: new Date(),
           })
           .execute();

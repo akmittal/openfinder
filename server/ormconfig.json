@@ -1,0 +1,9 @@
+{
+    "type": "sqlite",
+    
+    "database": "/Users/amittal/temp/line.sqlite",
+    "synchronize": true,
+    "logging": false,
+    "entities": ["src/models/**/*.ts"]
+    
+  }
