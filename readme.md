@@ -2,7 +2,7 @@
 
 Openfinder is a file manager/picker which can be integrated in GrapeJS asset manager/CK editor and TinyMCE
 
-![ScreenShot](https://github.com/akmittal/opnfinder/blob/master/screenshot/image1.png?raw=true)
+![ScreenShot](https://github.com/akmittal/openfinder/blob/master/screenshot/image1.png?raw=true)
 
 ## Server
 server is a node js app, can be run independently or as a Express middleware
