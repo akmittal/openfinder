@@ -15,6 +15,7 @@ import '@polymer/iron-icons/iron-icons';
 
 export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
+  @query('vaadin-upload') vaadinUpload: any;
   @property({ type: String }) serverURL: string = '';
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
@@ -29,12 +30,23 @@ export class FileManager extends LitElement {
   toggleInputModal() {
     this.inputModalState = !this.inputModalState;
   }
-  onFileUpload = async (evt: CustomEvent) => {
+  onFileUpload = (evt: CustomEvent) => {
+    const items = this.vaadinUpload.files.map((file: any) => !file.complete);
+    if (items.length === this.vaadinUpload.files.length) {
+      this.vaadinUpload.files = [];
+    }
     this.reloadFiles();
   };
   connectedCallback() {
     super.connectedCallback();
-    this.getFiles(this.context.path);
+  }
+
+  attributeChangedCallback(name: string, oldval: any, newval: any) {
+    console.log('attribute change: ', name, newval);
+    super.attributeChangedCallback(name, oldval, newval);
+    if (name === 'appshown' && newval === 'true') {
+      this.getFiles(this.context.path);
+    }
   }
   async reloadFiles() {
     this.getFiles(this.context.path);
@@ -156,7 +168,6 @@ export class FileManager extends LitElement {
     }
   `;
   handleSubmit = () => {
- 
     const event = new CustomEvent('mediaselected', {
       detail: this.activeItem,
     });
@@ -193,7 +204,7 @@ export class FileManager extends LitElement {
       filename: this.activeItem.name,
       newFilename: data,
     };
-   
+
     if (this.currentContext === 'dir') {
       body.context = body.context.split('/');
     } else {
@@ -208,7 +219,6 @@ export class FileManager extends LitElement {
   };
 
   handleSearch = (e: any) => {
-
     this.searchTerm = e.target.value;
   };
   handleFileAction = (e: CustomEvent) => {
@@ -227,7 +237,7 @@ export class FileManager extends LitElement {
         break;
     }
   };
-   changeAlt = async (description: string) => {
+  changeAlt = async (description: string) => {
     let url = `${this.serverURL}/meta`;
     let body = {
       context: this.context.path,
@@ -247,15 +257,15 @@ export class FileManager extends LitElement {
       case 'new-subfolder':
         await this.createNewSubFolder(evt.detail);
         this.directryKey = Math.random();
-   
+
         break;
       case 'rename':
         await this.rename(evt.detail);
-        this.reloadFiles()
+        this.reloadFiles();
         break;
       case 'change-alt':
         await this.changeAlt(evt.detail);
-        this.reloadFiles()
+        this.reloadFiles();
         break;
     }
     this.toggleInputModal();
