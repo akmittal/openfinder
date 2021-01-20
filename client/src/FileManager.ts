@@ -165,7 +165,6 @@ export class FileManager extends LitElement {
   handleCancel = () => {
     const event = new CustomEvent('fm:cancelled');
     this.dispatchEvent(event);
-    this.appShown = false;
   };
   handleSelection = async (e: CustomEvent) => {
     this.context = e.detail;

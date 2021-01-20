@@ -1,15 +1,16 @@
 {
   "name": "@openfinder/server",
-  "version": "1.0.3",
+  "version": "1.0.8",
   "description": "",
-  "main": "src/index.ts",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "ts-node-dev src/index.ts"
+    "start": "ts-node-dev src/index.ts",
+    "build": "tsc --declaration"
   },
   "keywords": [],
   "author": "",
-  "module": "true",
   "license": "ISC",
   "devDependencies": {
     "typescript": "^4.1.3"

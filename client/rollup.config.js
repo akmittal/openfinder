@@ -26,7 +26,7 @@ const baseConfig = createSpaConfig({
 
 });
 let config;
-if(isDev){
+if (!isDev) {
   config = {
     input: './out-tsc/src/file-manager.js',
     output: {
@@ -37,7 +37,8 @@ if(isDev){
 } else {
   config = {
     input: './index.html',
-    
+
+  }
 }
 
 export default merge(baseConfig, config);
