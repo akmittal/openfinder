@@ -1,20 +1,20 @@
-import { Request, Response, Router, json, urlencoded, static as staticServer } from "express";
+import { default as express, Request, Response, Router, json, urlencoded, static as staticServer } from "express";
 import multer, { FileFilterCallback } from "multer";
 import fs, { readdirSync } from "fs";
-import { join, resolve } from "path";
+import { join, resolve, extname } from "path";
 import cors from "cors";
 import sharp from "sharp";
 import { Connection, createConnection } from "typeorm";  
 import mime from "mime";
 
 
-// const app = express()
-// createConnection().then((connection) => {
-//   app.use("/", bootstrap(connection, resolve("./uploads")))
-//   app.listen(5000, () => {
-//     console.log("started")
-//   })
-// })
+const app = express()
+createConnection().then((connection) => {
+  app.use("/", bootstrap(connection, resolve("./uploads")))
+  app.listen(5000, () => {
+    console.log("started")
+  })
+})
 
 
 export function bootstrap(connection: Connection, uploadPath:string):Router {
@@ -117,7 +117,10 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     });
 
   router.route("/rename").post((req:Request, res:Response) => {
-    const { context, filename, newFilename } = req.body;
+    let { context, filename, newFilename } = req.body;
+    if(!newFilename.includes(".")){
+      newFilename = `${newFilename}${extname(filename)}`;
+    }
     const resolvedSource = join(uploadPath, context, filename);
     const resolvedTarget = join(uploadPath, context, newFilename);
     fs.renameSync(resolvedSource, resolvedTarget);

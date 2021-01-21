@@ -109,7 +109,10 @@ function bootstrap(connection, uploadPath) {
         res.json({ data: dirs });
     });
     router.route("/rename").post((req, res) => {
-        const { context, filename, newFilename } = req.body;
+        let { context, filename, newFilename } = req.body;
+        if (!newFilename.includes(".")) {
+            newFilename = `${newFilename}${path_1.extname(filename)}`;
+        }
         const resolvedSource = path_1.join(uploadPath, context, filename);
         const resolvedTarget = path_1.join(uploadPath, context, newFilename);
         fs_1.default.renameSync(resolvedSource, resolvedTarget);

@@ -25,22 +25,15 @@ export class InputModal extends LitElement {
     this.dispatchEvent(event);
     this.input.value = "";
   }
-  // constructor(){
-  //   super();
-  //   this.updateComplete.then(() => {
-  //     this.dialog.renderer =(root:any) => {
-  //       render(html`
-  //       <vaadin-text-field></vaadin-text-field>
-  //       <vaadin-button @click=${this.handleClick}>Submit</vaadin-button>
-  //       `, root)
-  //      }
-  //   })
-  // }
 
   render() {
     return html`
       <mwc-dialog .open=${this.opened}>
-        <vaadin-text-field></vaadin-text-field>
+        <vaadin-text-field @keypress=${(e:KeyboardEvent) => {
+          if(e.key ==="Enter"){
+            this.handleClick()
+          }
+        }}></vaadin-text-field>
         <vaadin-button @click=${this.handleClick}>Submit</vaadin-button>
       </mwc-dialog>
     `;
