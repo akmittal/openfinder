@@ -3,6 +3,8 @@ import './components/Card';
 import './components/Actions';
 import './components/Directories';
 import './components/InputModal';
+import './components/LoadingSpinner';
+import './components/Settings';
 
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
@@ -15,43 +17,65 @@ import '@polymer/iron-icons/iron-icons';
 
 export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
+  @query('vaadin-upload') vaadinUpload: any;
   @property({ type: String }) serverURL: string = '';
+
+  @property({ type: String }) sortColumn: string = 'name';
+
+  @property({ type: Boolean }) isAscending: boolean = true;
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
   @property({ type: Boolean }) appShown: boolean = true;
+  @property({ type: Boolean }) showsubmit: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
   @property({ type: Number }) directryKey: number = 0;
-
+  @property({ type: Number }) thumbsize: number = 15;
+  @property({ type: Boolean }) showSettings: boolean = false;
   @property({ type: Object }) context: any = { path: '/' };
   @property({ type: Object }) activeItem: any = null;
   @property({ type: String }) currentContext = 'dir';
   @property({ type: String }) searchTerm = '';
+  @property({ type: Boolean }) isLoading: boolean = false;
   toggleInputModal() {
     this.inputModalState = !this.inputModalState;
   }
-  onFileUpload = async (evt: CustomEvent) => {
-    this.reloadFiles();
+  onFileUpload = (evt: CustomEvent) => {
+    const items = this.vaadinUpload.files.map((file: any) => !file.complete);
+    if (items.length === this.vaadinUpload.files.length) {
+      this.vaadinUpload.files = [];
+      this.reloadFiles();
+    }
   };
   connectedCallback() {
     super.connectedCallback();
-    this.getFiles(this.context.path);
+  }
+
+  attributeChangedCallback(name: string, oldval: any, newval: any) {
+    console.log('attribute change: ', name, newval);
+    super.attributeChangedCallback(name, oldval, newval);
+    if (name === 'appshown' && newval === 'true') {
+      this.getFiles(this.context.path);
+    }
   }
   async reloadFiles() {
     this.getFiles(this.context.path);
   }
 
   async getFiles(context: string) {
+    this.isLoading = true;
+    this.files = [];
     this.files = (
       await (await fetch(`${this.serverURL}/file?context=${context}`)).json()
     ).data;
+    this.isLoading = false;
   }
 
   static styles = css`
     :host {
+      overflow: hidden;
       position: relative;
       background: #f1f1f1;
       flex: 1 1 100%;
-
       display: block;
       position: relative;
       flex-direction: column;
@@ -59,7 +83,6 @@ export class FileManager extends LitElement {
       justify-content: flex-start;
       font-size: calc(10px + 2vmin);
       color: #1a2b42;
-
       margin: 0 auto;
       /* text-align: center; */
     }
@@ -97,13 +120,13 @@ export class FileManager extends LitElement {
     }
     .image-wrapper {
       display: flex;
+      justify-content:center;
+
       flex-direction: row;
       flex-wrap: wrap;
       overflow-y: scroll;
     }
-    .image-wrapper > * {
-      flex: 0 0 calc(25% - 15px);
-    }
+   
     .selection {
       width: 100%;
       height: 50px;
@@ -118,6 +141,7 @@ export class FileManager extends LitElement {
       justify-content: flex-end;
       padding: 0px 15px;
       box-sizing: border-box;
+      z-index:9999;
     }
     .app-layout {
       display: grid;
@@ -154,9 +178,13 @@ export class FileManager extends LitElement {
       align-items: center;
       width: 100%;
     }
+
+    .setting-container {
+      display: flex;
+      padding: 10px 10px;
+    }
   `;
   handleSubmit = () => {
- 
     const event = new CustomEvent('mediaselected', {
       detail: this.activeItem,
     });
@@ -165,7 +193,6 @@ export class FileManager extends LitElement {
   handleCancel = () => {
     const event = new CustomEvent('fm:cancelled');
     this.dispatchEvent(event);
-    this.appShown = false;
   };
   handleSelection = async (e: CustomEvent) => {
     this.context = e.detail;
@@ -173,6 +200,14 @@ export class FileManager extends LitElement {
 
     await this.getFiles(e.detail.path);
   };
+  triggerDownload() {
+    const link = document.createElement('a');
+    link.href = `${this.serverURL}/static${this.activeItem.path}`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   async createNewSubFolder(folderName: string) {
     // console.log('a', this.context);
@@ -187,6 +222,9 @@ export class FileManager extends LitElement {
       }),
     });
   }
+  toggleSettings = () => {
+    this.showSettings = !this.showSettings;
+  };
   rename = async (data: any) => {
     let url = `${this.serverURL}/rename`;
     let body = {
@@ -194,7 +232,7 @@ export class FileManager extends LitElement {
       filename: this.activeItem.name,
       newFilename: data,
     };
-   
+
     if (this.currentContext === 'dir') {
       body.context = body.context.split('/');
     } else {
@@ -209,7 +247,6 @@ export class FileManager extends LitElement {
   };
 
   handleSearch = (e: any) => {
-
     this.searchTerm = e.target.value;
   };
   handleFileAction = (e: CustomEvent) => {
@@ -226,9 +263,12 @@ export class FileManager extends LitElement {
         this.inputModalType = e.detail;
         this.toggleInputModal();
         break;
+      case 'download':
+        this.triggerDownload();
+        break;
     }
   };
-   changeAlt = async (description: string) => {
+  changeAlt = async (description: string) => {
     let url = `${this.serverURL}/meta`;
     let body = {
       context: this.context.path,
@@ -248,19 +288,46 @@ export class FileManager extends LitElement {
       case 'new-subfolder':
         await this.createNewSubFolder(evt.detail);
         this.directryKey = Math.random();
-   
+
         break;
       case 'rename':
         await this.rename(evt.detail);
-        this.reloadFiles()
+        this.reloadFiles();
         break;
       case 'change-alt':
         await this.changeAlt(evt.detail);
-        this.reloadFiles()
+        this.reloadFiles();
         break;
     }
     this.toggleInputModal();
   };
+  handleSortChange(e: CustomEvent) {
+    console.log(e.detail, this.files);
+    this.sortColumn = e.detail.column;
+    this.isAscending = e.detail.isAscending;
+  }
+  getSortedFiles() {
+    return this.files.sort((prev, curr) => {
+      const prevData =
+        typeof prev[this.sortColumn] === 'string'
+          ? prev[this.sortColumn].toLowerCase()
+          : prev[this.sortColumn];
+      const currData =
+        typeof curr[this.sortColumn] === 'string'
+          ? curr[this.sortColumn].toLowerCase()
+          : curr[this.sortColumn];
+
+      if (this.isAscending) {
+        return prevData > currData ? 1 : -1;
+      } else {
+        return prevData > currData ? -1 : 1;
+      }
+    });
+  }
+  handleThumbChange = (e:CustomEvent) => {
+    this.thumbsize = e.detail;
+
+  }
 
   render() {
     return html`<input-modal
@@ -268,7 +335,14 @@ export class FileManager extends LitElement {
         @onsubmit=${this.handleInoutSelect}
       ></input-modal>
       <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
+        <of-settings
+          .show=${this.showSettings}
+          @op:sortfield=${this.handleSortChange}
+          @of:close-settings=${(e: CustomEvent) => this.toggleSettings()}
+          @op:thumbchange=${this.handleThumbChange}
+        ></of-settings>
         <div class="wrapper">
+          <loading-spinner .show=${this.isLoading}></loading-spinner>
           <file-actions
             context=${this.currentContext}
             @onaction=${this.handleFileAction}
@@ -278,6 +352,13 @@ export class FileManager extends LitElement {
               placeholder="Search..."
               @input=${this.handleSearch}
             ></vaadin-text-field>
+          </div>
+          <div class="setting-container">
+            <iron-icon
+              icon="settings"
+              role="button"
+              @click=${this.toggleSettings}
+            ></iron-icon>
           </div>
         </div>
 
@@ -299,8 +380,10 @@ export class FileManager extends LitElement {
             @upload-success=${this.onFileUpload}
           >
           </vaadin-upload>
+
           <div class="image-wrapper">
-            ${this.files
+            ${this.getSortedFiles().length === 0 ? html`<h4>No files Found</h4>`:html``}
+            ${this.getSortedFiles()
               .filter(file => {
                 if (!this.searchTerm) {
                   return true;
@@ -312,7 +395,7 @@ export class FileManager extends LitElement {
               })
               .map(
                 file =>
-                  html`<file-card
+                  html`<file-card style=${`width:${this.thumbsize}em`}
                     .serverURL=${this.serverURL}
                     .data=${file}
                     @dblclick=${this.handleSubmit}
@@ -325,7 +408,8 @@ export class FileManager extends LitElement {
               )}
           </div>
         </div>
-        <section class="selection">
+       
+      <section class=${`selection ${!this.showsubmit ? "hidden":""}`}>
           <section>
             <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
             <vaadin-button

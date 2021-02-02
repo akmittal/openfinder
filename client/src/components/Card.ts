@@ -48,7 +48,7 @@ export class Card extends LitElement {
       <div class=${`card ${this.selected ? 'active' : ''}`}>
         <img
           src=${`${this.serverURL}/static${this.data.path}`}
-          width="100%"
+          width="100%" loading="lazy"
         />
         <div class="meta">
           <div class="title">${this.data.name}</div>

@@ -1,7 +1,7 @@
-import express, { Request, Response, Router } from "express";
+import { default as express, Request, Response, Router, json, urlencoded, static as staticServer } from "express";
 import multer, { FileFilterCallback } from "multer";
 import fs, { readdirSync } from "fs";
-import { join, resolve } from "path";
+import { join, resolve, extname } from "path";
 import cors from "cors";
 import sharp from "sharp";
 import { Connection, createConnection } from "typeorm";  
@@ -19,7 +19,7 @@ createConnection().then((connection) => {
 
 export function bootstrap(connection: Connection, uploadPath:string):Router {
  
-  const router = express.Router()
+  const router = Router()
 
   router.use(cors());
 
@@ -42,8 +42,8 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
         mime.getType(join(source, dirent.name))?.startsWith("image/")
     );
 
-  router.use(express.json());
-  router.use(express.urlencoded({ extended: true }));
+  router.use(json());
+  router.use(urlencoded({ extended: true }));
 
   const storage = multer.diskStorage({
     destination: async (
@@ -96,13 +96,13 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
 
   router
     .route("/directory")
-    .post((req, res) => {
+    .post((req:Request, res:Response) => {
       const { context, dir } = req.body;
       const resolvedPath = join(uploadPath, context, dir);
       fs.mkdirSync(resolvedPath);
       res.json({ msg: "hello" });
     })
-    .get((req, res) => {
+    .get((req:Request, res:Response) => {
       const context: any = req.query.context;
       const resolvedPath = join(uploadPath, context);
       let dirs = getDirectories(resolvedPath).map((dir) => ({
@@ -116,8 +116,11 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
       res.json({ data: dirs });
     });
 
-  router.route("/rename").post((req, res) => {
-    const { context, filename, newFilename } = req.body;
+  router.route("/rename").post((req:Request, res:Response) => {
+    let { context, filename, newFilename } = req.body;
+    if(!newFilename.includes(".")){
+      newFilename = `${newFilename}${extname(filename)}`;
+    }
     const resolvedSource = join(uploadPath, context, filename);
     const resolvedTarget = join(uploadPath, context, newFilename);
     fs.renameSync(resolvedSource, resolvedTarget);
@@ -144,7 +147,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
         res.json({ r });
       }
     )
-    .get(async (req, res) => {
+    .get(async (req:Request, res:Response) => {
       try {
         const context: any = req.query.context;
         const resolvedDir = join(uploadPath, context);
@@ -188,7 +191,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     }
   });
 
-  router.use("/static", express.static(uploadPath));
+  router.use("/static", staticServer(uploadPath));
  
 
 

@@ -52,9 +52,9 @@ export class Actions extends LitElement {
           <iron-icon icon="create" slot="prefix"></iron-icon>
           Change Alt
         </vaadin-button>
-              <vaadin-button data-action="view">
+              <vaadin-button data-action="download">
                 <iron-icon icon="visibility" slot="prefix"></iron-icon>
-                View
+                Download
               </vaadin-button>
              
             `
