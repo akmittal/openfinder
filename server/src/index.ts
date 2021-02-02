@@ -22,6 +22,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
   const router = Router()
 
   router.use(cors());
+  const checkMimeList = ['video','image'];
 
   function removeExtension(filename: string) {
     return filename.split(".").slice(0, -1).join(".");
@@ -39,7 +40,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     readdirSync(source, { withFileTypes: true }).filter(
       (dirent) =>
         !dirent.isDirectory() &&
-        mime.getType(join(source, dirent.name))?.startsWith("image/")
+        checkMimeList.some(async item => item === await mime.getType(join(source, dirent.name).split('/')[0]))
     );
 
   router.use(json());
@@ -81,7 +82,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     file: Express.Multer.File,
     cb: FileFilterCallback
   ) {
-    if (file.mimetype.split("/")[0] === "image") {
+    if (file.mimetype.split("/")[0] === "image" || file.mimetype.split("/")[0] === "video") {
       cb(null, true);
     } else {
       cb(new Error("Invalid file format"));
@@ -90,7 +91,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
 
   const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: { fileSize: 200 * 1024 * 1024 },
     fileFilter: fileFilter,
   });
 
@@ -154,6 +155,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
         const files = getFiles(resolvedDir).map(async (file: any) => {
           const absPath = join(resolvedDir, file.name);
           const filestats = fs.statSync(absPath);
+          const fileType = await mime.getType(absPath);
           let imageMeta: any = { width: -1, height: -1 };
           try {
             const image = sharp(absPath);
@@ -170,6 +172,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
             width: imageMeta.width,
             height: imageMeta.height,
             description: xmp,
+            type: fileType?.split('/')[0]
           };
         });
         const data = await Promise.all(files);

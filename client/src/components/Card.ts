@@ -1,10 +1,11 @@
 import { LitElement, html, css, property, customElement } from 'lit-element';
+import '@vaadin/vaadin-button';
 
 @customElement('file-card')
 export class Card extends LitElement {
   @property({ type: Object }) data: any = null;
   @property({ type: Boolean }) selected: boolean = false;
-  @property({ type: String }) serverURL: string = "";
+  @property({ type: String }) serverURL: string = '';
 
   static styles = css`
     :host {
@@ -25,7 +26,6 @@ export class Card extends LitElement {
       border: 3px solid hsl(214, 90%, 52%);
     }
     .meta {
-     
       font-size: 1rem;
       display: flex;
       flex-direction: column;
@@ -40,16 +40,33 @@ export class Card extends LitElement {
     }
   `;
 
+  handleClipUrl(e: Event) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        // navigator clipboard api method'
+        navigator.clipboard.writeText(
+          `${this.serverURL}/static${this.data.path}`
+        );
+      }
+    } catch (err: any) {
+      console.error('Clipboard Unsucessfull');
+    }
+  }
   render() {
     if (!this.data) {
       return html`Loading...`;
     }
     return html`
       <div class=${`card ${this.selected ? 'active' : ''}`}>
-        <img
-          src=${`${this.serverURL}/static${this.data.path}`}
-          width="100%" loading="lazy"
-        />
+        ${this.data.type === 'image'
+          ? html`<img
+              src=${`${this.serverURL}/static${this.data.path}`}
+              width="100%"
+              loading="lazy"
+            />`
+          : html`<video controls width="100%" heigth="100%">
+              <source src=${`${this.serverURL}/static${this.data.path}`} />
+            </video> `}
         <div class="meta">
           <div class="title">${this.data.name}</div>
           <div class="sub">${`${this.data.description}`}</div>
@@ -58,8 +75,8 @@ export class Card extends LitElement {
           </div>
           <div class="sub">${Math.floor(this.data.size / 1024)}KB</div>
           <div class="sub">${`${this.data.width} x ${this.data.height}`}</div>
-         
         </div>
+        <vaadin-button @click=${this.handleClipUrl}>Copy Url </vaadin-button>
       </div>
     `;
   }

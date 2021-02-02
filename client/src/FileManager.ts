@@ -120,13 +120,13 @@ export class FileManager extends LitElement {
     }
     .image-wrapper {
       display: flex;
-      justify-content:center;
+      justify-content: center;
 
       flex-direction: row;
       flex-wrap: wrap;
       overflow-y: scroll;
     }
-   
+
     .selection {
       width: 100%;
       height: 50px;
@@ -141,7 +141,7 @@ export class FileManager extends LitElement {
       justify-content: flex-end;
       padding: 0px 15px;
       box-sizing: border-box;
-      z-index:9999;
+      z-index: 9999;
     }
     .app-layout {
       display: grid;
@@ -184,7 +184,7 @@ export class FileManager extends LitElement {
       padding: 10px 10px;
     }
   `;
-  handleSubmit = () => {
+  handleSubmit = (e: any) => {
     const event = new CustomEvent('mediaselected', {
       detail: this.activeItem,
     });
@@ -324,10 +324,9 @@ export class FileManager extends LitElement {
       }
     });
   }
-  handleThumbChange = (e:CustomEvent) => {
+  handleThumbChange = (e: CustomEvent) => {
     this.thumbsize = e.detail;
-
-  }
+  };
 
   render() {
     return html`<input-modal
@@ -374,7 +373,7 @@ export class FileManager extends LitElement {
             style="overflow:visible"
             data-action="edit"
             type="file"
-            accept="image/*"
+            accept="video/*,image/*"
             .target=${`${this.serverURL}/file`}
             .headers=${{ path: this.context.path }}
             @upload-success=${this.onFileUpload}
@@ -382,7 +381,9 @@ export class FileManager extends LitElement {
           </vaadin-upload>
 
           <div class="image-wrapper">
-            ${this.getSortedFiles().length === 0 ? html`<h4>No files Found</h4>`:html``}
+            ${this.getSortedFiles().length === 0
+              ? html`<h4>No files Found</h4>`
+              : html``}
             ${this.getSortedFiles()
               .filter(file => {
                 if (!this.searchTerm) {
@@ -395,21 +396,28 @@ export class FileManager extends LitElement {
               })
               .map(
                 file =>
-                  html`<file-card style=${`width:${this.thumbsize}em`}
+                  html`<file-card
+                    style=${`width:${this.thumbsize}em`}
                     .serverURL=${this.serverURL}
                     .data=${file}
-                    @dblclick=${this.handleSubmit}
+                    @dblclick=${(e: Event) => {
+                      if (file.type !== 'video') {
+                        this.handleSubmit(e);
+                      }
+                    }}
                     @click=${(e: Event) => {
-                      this.activeItem = file;
-                      this.currentContext = 'file';
+                      if (file.type !== 'video') {
+                        this.activeItem = file;
+                        this.currentContext = 'file';
+                      }
                     }}
                     .selected=${this.activeItem === file}
                   ></file-card>`
               )}
           </div>
         </div>
-       
-      <section class=${`selection ${!this.showsubmit ? "hidden":""}`}>
+
+        <section class=${`selection ${!this.showsubmit ? 'hidden' : ''}`}>
           <section>
             <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
             <vaadin-button
