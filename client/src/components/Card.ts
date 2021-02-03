@@ -48,7 +48,7 @@ export class Card extends LitElement {
           `${this.serverURL}/static${this.data.path}`
         );
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Clipboard Unsucessfull');
     }
   }

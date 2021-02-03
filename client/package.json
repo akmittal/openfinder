@@ -56,7 +56,7 @@
     ]
   },
   "name": "@openfinder/client",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "description": "Webcomponent file-manager following open-wc recommendations",
   "author": "file-manager",
   "license": "MIT",

@@ -8,13 +8,13 @@ import { Connection, createConnection } from "typeorm";
 import mime from "mime";
 
 
-const app = express()
-createConnection().then((connection) => {
-  app.use("/", bootstrap(connection, resolve("./uploads")))
-  app.listen(5000, () => {
-    console.log("started")
-  })
-})
+// const app = express()
+// createConnection().then((connection) => {
+//   app.use("/", bootstrap(connection, resolve("./uploads")))
+//   app.listen(5000, () => {
+//     console.log("started")
+//   })
+// })
 
 
 export function bootstrap(connection: Connection, uploadPath:string):Router {
@@ -40,7 +40,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     readdirSync(source, { withFileTypes: true }).filter(
       (dirent) =>
         !dirent.isDirectory() &&
-        checkMimeList.some(async item => item === await mime.getType(join(source, dirent.name).split('/')[0]))
+        checkMimeList.includes(mime.getType(join(source, dirent.name).split('/')[0]))
     );
 
   router.use(json());

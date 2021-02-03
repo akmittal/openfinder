@@ -40,6 +40,7 @@ const mime_1 = __importDefault(require("mime"));
 function bootstrap(connection, uploadPath) {
     const router = express_1.Router();
     router.use(cors_1.default());
+    const checkMimeList = ['video', 'image'];
     function removeExtension(filename) {
         return filename.split(".").slice(0, -1).join(".");
     }
@@ -49,10 +50,8 @@ function bootstrap(connection, uploadPath) {
     const getDirectories = (source) => fs_1.readdirSync(source, { withFileTypes: true })
         .filter((dirent) => dirent.isDirectory())
         .map((dirent) => dirent.name);
-    const getFiles = (source) => fs_1.readdirSync(source, { withFileTypes: true }).filter((dirent) => {
-        var _a;
-        return !dirent.isDirectory() && ((_a = mime_1.default.getType(path_1.join(source, dirent.name))) === null || _a === void 0 ? void 0 : _a.startsWith("image/"));
-    });
+    const getFiles = (source) => fs_1.readdirSync(source, { withFileTypes: true }).filter((dirent) => !dirent.isDirectory() &&
+        checkMimeList.includes(mime_1.default.getType(path_1.join(source, dirent.name).split('/')[0])));
     router.use(express_1.json());
     router.use(express_1.urlencoded({ extended: true }));
     const storage = multer_1.default.diskStorage({
@@ -75,7 +74,7 @@ function bootstrap(connection, uploadPath) {
         },
     });
     function fileFilter(req, file, cb) {
-        if (file.mimetype.split("/")[0] === "image") {
+        if (file.mimetype.split("/")[0] === "image" || file.mimetype.split("/")[0] === "video") {
             cb(null, true);
         }
         else {
@@ -84,7 +83,7 @@ function bootstrap(connection, uploadPath) {
     }
     const upload = multer_1.default({
         storage,
-        limits: { fileSize: 10 * 1024 * 1024 },
+        limits: { fileSize: 200 * 1024 * 1024 },
         fileFilter: fileFilter,
     });
     router
@@ -142,6 +141,7 @@ function bootstrap(connection, uploadPath) {
             const files = getFiles(resolvedDir).map(async (file) => {
                 const absPath = path_1.join(resolvedDir, file.name);
                 const filestats = fs_1.default.statSync(absPath);
+                const fileType = await mime_1.default.getType(absPath);
                 let imageMeta = { width: -1, height: -1 };
                 try {
                     const image = sharp_1.default(absPath);
@@ -149,7 +149,7 @@ function bootstrap(connection, uploadPath) {
                 }
                 catch (e) { }
                 const xmp = await readDescription(absPath.replace(uploadPath, ""));
-                return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, ""), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp });
+                return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, ""), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split('/')[0] });
             });
             const data = await Promise.all(files);
             res.json({ data });
