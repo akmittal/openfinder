@@ -40,7 +40,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     readdirSync(source, { withFileTypes: true }).filter(
       (dirent) =>
         !dirent.isDirectory() &&
-        checkMimeList.includes(mime.getType(join(source, dirent.name).split('/')[0]))
+        checkMimeList.includes(mime.getType(join(source, dirent.name)).split('/')[0])
     );
 
   router.use(json());
@@ -160,7 +160,9 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
           try {
             const image = sharp(absPath);
             imageMeta = await image.metadata();
-          } catch (e) {}
+          } catch (e) {
+            console.error(e)
+          }
 
           const xmp = await readDescription(absPath.replace(uploadPath, ""));
 

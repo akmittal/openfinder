@@ -51,7 +51,7 @@ function bootstrap(connection, uploadPath) {
         .filter((dirent) => dirent.isDirectory())
         .map((dirent) => dirent.name);
     const getFiles = (source) => fs_1.readdirSync(source, { withFileTypes: true }).filter((dirent) => !dirent.isDirectory() &&
-        checkMimeList.includes(mime_1.default.getType(path_1.join(source, dirent.name).split('/')[0])));
+        checkMimeList.includes(mime_1.default.getType(path_1.join(source, dirent.name)).split('/')[0]));
     router.use(express_1.json());
     router.use(express_1.urlencoded({ extended: true }));
     const storage = multer_1.default.diskStorage({
@@ -147,7 +147,9 @@ function bootstrap(connection, uploadPath) {
                     const image = sharp_1.default(absPath);
                     imageMeta = await image.metadata();
                 }
-                catch (e) { }
+                catch (e) {
+                    console.error(e);
+                }
                 const xmp = await readDescription(absPath.replace(uploadPath, ""));
                 return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, ""), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split('/')[0] });
             });
