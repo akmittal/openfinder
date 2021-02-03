@@ -3,6 +3,7 @@ import { LitElement, html, css, property, customElement } from 'lit-element';
 @customElement('file-actions')
 export class Actions extends LitElement {
   @property({ type: String }) context = 'dir';
+  @property({ type: String }) selectedItemType = '';
 
   static styles = css`
     :host {
@@ -40,24 +41,31 @@ export class Actions extends LitElement {
           <iron-icon icon="fullscreen" slot="prefix"></iron-icon>
           Maximize
         </vaadin-button> -->
-       
 
         ${this.context === 'file'
-          ? html`
-           <vaadin-button data-action="rename">
-          <iron-icon icon="find-replace" slot="prefix"></iron-icon>
-          Rename
-        </vaadin-button>
-        <vaadin-button data-action="change-alt">
-          <iron-icon icon="create" slot="prefix"></iron-icon>
-          Change Alt
-        </vaadin-button>
-              <vaadin-button data-action="download">
-                <iron-icon icon="visibility" slot="prefix"></iron-icon>
-                Download
-              </vaadin-button>
-             
-            `
+          ? this.selectedItemType !== 'video'
+            ? html`
+                <vaadin-button data-action="rename">
+                  <iron-icon icon="find-replace" slot="prefix"></iron-icon>
+                  Rename
+                </vaadin-button>
+                <vaadin-button data-action="change-alt">
+                  <iron-icon icon="create" slot="prefix"></iron-icon>
+                  Change Alt
+                </vaadin-button>
+                <vaadin-button data-action="download">
+                  <iron-icon icon="visibility" slot="prefix"></iron-icon>
+                  Download
+                </vaadin-button>
+              `
+            : html` <vaadin-button data-action="rename">
+                  <iron-icon icon="find-replace" slot="prefix"></iron-icon>
+                  Rename
+                </vaadin-button>
+                <vaadin-button data-action="download">
+                  <iron-icon icon="visibility" slot="prefix"></iron-icon>
+                  Download
+                </vaadin-button>`
           : ''}
       </div>
     `;
