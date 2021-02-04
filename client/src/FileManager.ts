@@ -21,7 +21,6 @@ export class FileManager extends LitElement {
   @property({ type: String }) serverURL: string = '';
 
   @property({ type: String }) sortColumn: string = 'name';
-
   @property({ type: Boolean }) isAscending: boolean = true;
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
@@ -67,6 +66,9 @@ export class FileManager extends LitElement {
     this.files = (
       await (await fetch(`${this.serverURL}/file?context=${context}`)).json()
     ).data;
+    if(this.showsubmit) {
+      this.files = this.files.filter((file :any)=>file.type !== 'video')
+    }
     this.isLoading = false;
   }
 
@@ -343,6 +345,7 @@ export class FileManager extends LitElement {
         <div class="wrapper">
           <loading-spinner .show=${this.isLoading}></loading-spinner>
           <file-actions
+            selectedItemType=${this.activeItem ? this.activeItem.type : ''}
             context=${this.currentContext}
             @onaction=${this.handleFileAction}
           ></file-actions>
@@ -401,15 +404,11 @@ export class FileManager extends LitElement {
                     .serverURL=${this.serverURL}
                     .data=${file}
                     @dblclick=${(e: Event) => {
-                      if (file.type !== 'video') {
-                        this.handleSubmit(e);
-                      }
+                      this.handleSubmit(e);
                     }}
                     @click=${(e: Event) => {
-                      if (file.type !== 'video') {
                         this.activeItem = file;
                         this.currentContext = 'file';
-                      }
                     }}
                     .selected=${this.activeItem === file}
                   ></file-card>`

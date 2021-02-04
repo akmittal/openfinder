@@ -1,5 +1,6 @@
 import { LitElement, html, css, property, customElement } from 'lit-element';
 import '@vaadin/vaadin-button';
+import '@polymer/iron-icon/iron-icon';
 
 @customElement('file-card')
 export class Card extends LitElement {
@@ -64,7 +65,7 @@ export class Card extends LitElement {
               width="100%"
               loading="lazy"
             />`
-          : html`<video controls width="100%" heigth="100%">
+          : html`<video preload='metadata' controls width='100%' heigth='100%'>
               <source src=${`${this.serverURL}/static${this.data.path}`} />
             </video> `}
         <div class="meta">
@@ -76,7 +77,10 @@ export class Card extends LitElement {
           <div class="sub">${Math.floor(this.data.size / 1024)}KB</div>
           <div class="sub">${`${this.data.width} x ${this.data.height}`}</div>
         </div>
-        <vaadin-button @click=${this.handleClipUrl}>Copy Url </vaadin-button>
+        <vaadin-button @click=${this.handleClipUrl}>
+          <iron-icon icon='content-copy' slot='prefix'></iron-icon>
+          Copy Link
+        </vaadin-button>
       </div>
     `;
   }
