@@ -5,7 +5,7 @@ import './components/Directories';
 import './components/InputModal';
 import './components/LoadingSpinner';
 import './components/Settings';
-
+import './components/InputModalUploadImage'
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 
@@ -17,6 +17,7 @@ import '@polymer/iron-icons/iron-icons';
 
 export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
+  @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
   @property({ type: String }) serverURL: string = '';
 
@@ -24,6 +25,7 @@ export class FileManager extends LitElement {
   @property({ type: Boolean }) isAscending: boolean = true;
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
+  @property({ type: Boolean }) uploadModalState: boolean = false;
   @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Boolean }) showsubmit: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
@@ -37,6 +39,9 @@ export class FileManager extends LitElement {
   @property({ type: Boolean }) isLoading: boolean = false;
   toggleInputModal() {
     this.inputModalState = !this.inputModalState;
+  }
+  toggleUploadModal() {
+    this.uploadModalState = !this.uploadModalState;
   }
   onFileUpload = (evt: CustomEvent) => {
     const items = this.vaadinUpload.files.map((file: any) => !file.complete);
@@ -247,7 +252,14 @@ export class FileManager extends LitElement {
       headers: { 'content-type': 'application/json' },
     });
   };
-
+  replace = async(data:any)=>{
+    const url = `${this.serverURL}/replace?path=${this.activeItem.path}`;
+    const { xhr, formData } = data.detail;
+    if(xhr) {
+      xhr.open('POST',url);
+      xhr.send(formData);
+    }
+  }
   handleSearch = (e: any) => {
     this.searchTerm = e.target.value;
   };
@@ -260,6 +272,10 @@ export class FileManager extends LitElement {
       case 'rename':
         this.inputModalType = e.detail;
         this.toggleInputModal();
+        break;
+      case 'replace':
+        this.inputModalType = e.detail;
+        this.toggleUploadModal();
         break;
       case 'change-alt':
         this.inputModalType = e.detail;
@@ -294,14 +310,20 @@ export class FileManager extends LitElement {
         break;
       case 'rename':
         await this.rename(evt.detail);
+        this.toggleInputModal();
+        this.reloadFiles();
+        break;
+      case 'replace':
+        await this.replace(evt.detail);
+        this.toggleUploadModal();
         this.reloadFiles();
         break;
       case 'change-alt':
         await this.changeAlt(evt.detail);
+        this.toggleInputModal();
         this.reloadFiles();
         break;
     }
-    this.toggleInputModal();
   };
   handleSortChange(e: CustomEvent) {
     console.log(e.detail, this.files);
@@ -335,6 +357,10 @@ export class FileManager extends LitElement {
         .opened=${this.inputModalState}
         @onsubmit=${this.handleInoutSelect}
       ></input-modal>
+      <input-modal-upload
+        .opened=${this.uploadModalState}
+        @onsubmit=${this.handleInoutSelect}
+      ></input-modal-upload>
       <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
         <of-settings
           .show=${this.showSettings}
