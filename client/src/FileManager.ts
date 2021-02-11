@@ -252,14 +252,6 @@ export class FileManager extends LitElement {
       headers: { 'content-type': 'application/json' },
     });
   };
-  replace = async(data:any)=>{
-    const url = `${this.serverURL}/replace?path=${this.activeItem.path}`;
-    const { xhr, formData } = data.detail;
-    if(xhr) {
-      xhr.open('POST',url);
-      xhr.send(formData);
-    }
-  }
   handleSearch = (e: any) => {
     this.searchTerm = e.target.value;
   };
@@ -314,7 +306,6 @@ export class FileManager extends LitElement {
         this.reloadFiles();
         break;
       case 'replace':
-        await this.replace(evt.detail);
         this.toggleUploadModal();
         this.reloadFiles();
         break;
@@ -359,6 +350,8 @@ export class FileManager extends LitElement {
       ></input-modal>
       <input-modal-upload
         .opened=${this.uploadModalState}
+        serverURL=${this.serverURL}
+        imagePath=${this.activeItem? this.activeItem.path:''}
         @onsubmit=${this.handleInoutSelect}
       ></input-modal-upload>
       <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>

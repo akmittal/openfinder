@@ -15,11 +15,16 @@ export class InputModal extends LitElement {
   @query('vaadin-upload') vaadinUpload: any;
   @property({ type: Boolean }) opened: boolean = false;
   @property({ type: Object }) context = { path: '/' };
+  @property({ type: String }) imagePath = '';
+  @property({ type: String }) serverURL = '';
+
 
   onFileUpload = (evt: CustomEvent) => {
     const items = this.vaadinUpload.files.map((file: any) => !file.complete);
     if (items.length === this.vaadinUpload.files.length) {
       this.vaadinUpload.files = [];
+      const event = new CustomEvent('onsubmit', { detail: evt });
+      this.dispatchEvent(event);
     }
   };
   static styles = css`
@@ -28,22 +33,16 @@ export class InputModal extends LitElement {
     }
   `;
 
-  handleClick(evt: any) {
-    evt.preventDefault();
-    const event = new CustomEvent('onsubmit', { detail: evt });
-    this.dispatchEvent(event);
-  }
-
   render() {
-    console.log('>>>>> modal pop', this.opened);
+    const url = `${this.serverURL}/replace?path=${this.imagePath}`;
     return html` <mwc-dialog .open=${this.opened}>
       <vaadin-upload
         style="overflow:visible"
         data-action="edit"
         type="file"
         accept="image/*"
+        .target=${url}
         .headers=${{ path: this.context.path }}
-        @upload-request=${this.handleClick}
         @upload-success=${this.onFileUpload}
       >
       </vaadin-upload>
