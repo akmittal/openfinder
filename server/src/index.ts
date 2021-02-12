@@ -8,13 +8,13 @@ import { Connection, createConnection } from "typeorm";
 import mime from "mime";
 
 
-// const app = express()
-// createConnection().then((connection) => {
-//   app.use("/", bootstrap(connection, resolve("./uploads")))
-//   app.listen(5000, () => {
-//     console.log("started")
-//   })
-// })
+const app = express()
+createConnection().then((connection) => {
+  app.use("/", bootstrap(connection, resolve("./uploads")))
+  app.listen(5000, () => {
+    console.log("started")
+  })
+})
 
 
 export function bootstrap(connection: Connection, uploadPath:string):Router {
@@ -69,9 +69,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
       file,
       cb
     ) => {
-      const filename = `${removeExtension(
-        file.originalname
-      )}-${Date.now()}.${getExtension(file.originalname)}`;
+      const filename = file.originalname;
       req.destinationPath = join(req.destinationDir, filename);
       cb(null, filename);
     },
@@ -82,7 +80,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     file: Express.Multer.File,
     cb: FileFilterCallback
   ) {
-    if (file.mimetype.split("/")[0] === "image" || file.mimetype.split("/")[0] === "video") {
+    if (checkMimeList.includes(file.mimetype.split("/")[0])) {
       cb(null, true);
     } else {
       cb(new Error("Invalid file format"));
@@ -117,16 +115,55 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
       res.json({ data: dirs });
     });
 
-  router.route("/rename").post((req:Request, res:Response) => {
-    let { context, filename, newFilename } = req.body;
-    if(!newFilename.includes(".")){
-      newFilename = `${newFilename}${extname(filename)}`;
+  router.route("/rename").post(async (req: Request, res: Response) => {
+    let { context, filename, newFilename, filePath } = req.body;
+    try {
+      if (!newFilename.includes(".")) {
+        newFilename = `${newFilename}${extname(filename)}`;
+      }
+      const resolvedSource = join(uploadPath, context, filename);
+      const resolvedTarget = join(uploadPath, context, newFilename);
+      fs.renameSync(resolvedSource, resolvedTarget);
+      await connection
+        .getRepository("image")
+        .createQueryBuilder()
+        .update("image")
+        .set({ name: newFilename, path: join(context, newFilename) })
+        .where("path=:path", { path: filePath })
+        .execute();
+      res.json({ msg: "done" });
+    } catch (e) {
+      console.log("Error in Rename op", e);
     }
-    const resolvedSource = join(uploadPath, context, filename);
-    const resolvedTarget = join(uploadPath, context, newFilename);
-    fs.renameSync(resolvedSource, resolvedTarget);
-    res.json({ msg: "done" });
   });
+  // another multer instance for file replace
+  const imgReplaceMulterInst = multer({
+    limits: { fileSize: 20 * 1024 * 1024 },
+    fileFilter: fileFilter,
+  });
+
+  router
+    .route("/replace")
+    .post(imgReplaceMulterInst.single("file"), async (req: Request, res) => {
+      try {
+        let imagePath: any = req.query.path;
+        let file = req.file;
+        const filename = imagePath.replace("/", "");
+
+        const resolvedSource = join(uploadPath, filename);
+
+        const outStream = fs.createWriteStream(resolvedSource);
+        outStream.write(file.buffer);
+        outStream.end();
+        outStream.on("finish", function (err: any) {
+          if(!err) {
+            res.json({ msg: "done" });
+          }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
 
   router
     .route("/file")

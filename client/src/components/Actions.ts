@@ -53,6 +53,10 @@ export class Actions extends LitElement {
                   <iron-icon icon="create" slot="prefix"></iron-icon>
                   Change Alt
                 </vaadin-button>
+                <vaadin-button data-action="replace">
+                  <iron-icon icon="find-replace" slot="prefix"></iron-icon>
+                  Replace
+                </vaadin-button>
                 <vaadin-button data-action="download">
                   <iron-icon icon="visibility" slot="prefix"></iron-icon>
                   Download
