@@ -233,6 +233,7 @@ export class FileManager extends LitElement {
       context: this.context.path,
       filename: this.activeItem.name,
       newFilename: data,
+      filePath: this.activeItem.path
     };
 
     if (this.currentContext === 'dir') {
