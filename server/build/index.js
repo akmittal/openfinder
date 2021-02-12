@@ -50,8 +50,11 @@ function bootstrap(connection, uploadPath) {
     const getDirectories = (source) => fs_1.readdirSync(source, { withFileTypes: true })
         .filter((dirent) => dirent.isDirectory())
         .map((dirent) => dirent.name);
-    const getFiles = (source) => fs_1.readdirSync(source, { withFileTypes: true }).filter((dirent) => !dirent.isDirectory() &&
-        checkMimeList.includes(mime_1.default.getType(path_1.join(source, dirent.name)).split('/')[0]));
+    const getFiles = (source) => fs_1.readdirSync(source, { withFileTypes: true }).filter((dirent) => {
+        var _a;
+        return !dirent.isDirectory() &&
+            checkMimeList.includes((_a = mime_1.default.getType(path_1.join(source, dirent.name))) === null || _a === void 0 ? void 0 : _a.split('/')[0]);
+    });
     router.use(express_1.json());
     router.use(express_1.urlencoded({ extended: true }));
     const storage = multer_1.default.diskStorage({

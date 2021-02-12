@@ -1,13 +1,13 @@
 {
   "name": "@openfinder/server",
-  "version": "1.0.12",
+  "version": "1.1.1",
   "description": "",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "ts-node-dev src/index.ts",
-    "build": "tsc --declaration"
+    "build": "NODE_ENV=\"production\" tsc --declaration"
   },
   "keywords": [],
   "author": "",
