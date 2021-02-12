@@ -69,9 +69,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
       file,
       cb
     ) => {
-      const filename = `${removeExtension(
-        file.originalname
-      )}-${Date.now()}.${getExtension(file.originalname)}`;
+      const filename = file.originalname;
       req.destinationPath = join(req.destinationDir, filename);
       cb(null, filename);
     },
@@ -117,15 +115,26 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
       res.json({ data: dirs });
     });
 
-  router.route("/rename").post((req:Request, res:Response) => {
-    let { context, filename, newFilename } = req.body;
-    if(!newFilename.includes(".")){
-      newFilename = `${newFilename}${extname(filename)}`;
+  router.route("/rename").post(async (req: Request, res: Response) => {
+    let { context, filename, newFilename, filePath } = req.body;
+    try {
+      if (!newFilename.includes(".")) {
+        newFilename = `${newFilename}${extname(filename)}`;
+      }
+      const resolvedSource = join(uploadPath, context, filename);
+      const resolvedTarget = join(uploadPath, context, newFilename);
+      fs.renameSync(resolvedSource, resolvedTarget);
+      await connection
+        .getRepository("image")
+        .createQueryBuilder()
+        .update("image")
+        .set({ name: newFilename, path: join(context, newFilename) })
+        .where("path=:path", { path: filePath })
+        .execute();
+      res.json({ msg: "done" });
+    } catch (e) {
+      console.log("Error in Rename op", e);
     }
-    const resolvedSource = join(uploadPath, context, filename);
-    const resolvedTarget = join(uploadPath, context, newFilename);
-    fs.renameSync(resolvedSource, resolvedTarget);
-    res.json({ msg: "done" });
   });
 
   router
