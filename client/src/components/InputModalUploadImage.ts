@@ -41,6 +41,7 @@ export class InputModal extends LitElement {
         data-action="edit"
         type="file"
         accept="image/*"
+        max-files="1"
         .target=${url}
         .headers=${{ path: this.context.path }}
         @upload-success=${this.onFileUpload}
