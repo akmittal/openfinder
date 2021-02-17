@@ -42,16 +42,14 @@ export class Card extends LitElement {
   `;
 
   handleClipUrl(e: Event) {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        // navigator clipboard api method'
-        navigator.clipboard.writeText(
-          `${this.serverURL}/static${this.data.path}`
-        );
-      }
-    } catch (err) {
-      console.error('Clipboard Unsucessfull');
-    }
+    const event = new CustomEvent('clipboard:img:url', {
+      detail: {
+        path: this.data.path,
+      },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
   }
   render() {
     if (!this.data) {
@@ -65,7 +63,7 @@ export class Card extends LitElement {
               width="100%"
               loading="lazy"
             />`
-          : html`<video preload='metadata' controls width='100%' heigth='100%'>
+          : html`<video preload="metadata" controls width="100%" heigth="100%">
               <source src=${`${this.serverURL}/static${this.data.path}`} />
             </video> `}
         <div class="meta">
@@ -75,10 +73,14 @@ export class Card extends LitElement {
             ${new Date(this.data.modified).toLocaleString()}
           </div>
           <div class="sub">${Math.floor(this.data.size / 1024)}KB</div>
-          <div class="sub">${`${this.data.width} x ${this.data.height}`}</div>
+          <div class="sub">
+            ${this.data.width && this.data.height !== -1
+              ? `${this.data.width} x ${this.data.height}`
+              : ''}
+          </div>
         </div>
         <vaadin-button @click=${this.handleClipUrl}>
-          <iron-icon icon='content-copy' slot='prefix'></iron-icon>
+          <iron-icon icon="content-copy" slot="prefix"></iron-icon>
           Copy Link
         </vaadin-button>
       </div>

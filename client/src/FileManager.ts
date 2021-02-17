@@ -5,7 +5,7 @@ import './components/Directories';
 import './components/InputModal';
 import './components/LoadingSpinner';
 import './components/Settings';
-import './components/InputModalUploadImage'
+import './components/InputModalUploadImage';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 
@@ -71,8 +71,8 @@ export class FileManager extends LitElement {
     this.files = (
       await (await fetch(`${this.serverURL}/file?context=${context}`)).json()
     ).data;
-    if(this.showsubmit) {
-      this.files = this.files.filter((file :any)=>file.type !== 'video')
+    if (this.showsubmit) {
+      this.files = this.files.filter((file: any) => file.type !== 'video');
     }
     this.isLoading = false;
   }
@@ -298,7 +298,7 @@ export class FileManager extends LitElement {
       case 'new-subfolder':
         await this.createNewSubFolder(evt.detail);
         this.directryKey = Math.random();
-
+        this.toggleInputModal();
         break;
       case 'rename':
         await this.rename(evt.detail);
@@ -351,7 +351,7 @@ export class FileManager extends LitElement {
       <input-modal-upload
         .opened=${this.uploadModalState}
         serverURL=${this.serverURL}
-        imagePath=${this.activeItem? this.activeItem.path:''}
+        imagePath=${this.activeItem ? this.activeItem.path : ''}
         @onsubmit=${this.handleInoutSelect}
       ></input-modal-upload>
       <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
@@ -426,8 +426,8 @@ export class FileManager extends LitElement {
                       this.handleSubmit(e);
                     }}
                     @click=${(e: Event) => {
-                        this.activeItem = file;
-                        this.currentContext = 'file';
+                      this.activeItem = file;
+                      this.currentContext = 'file';
                     }}
                     .selected=${this.activeItem === file}
                   ></file-card>`
