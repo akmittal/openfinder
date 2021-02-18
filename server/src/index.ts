@@ -195,8 +195,10 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
           const fileType = await mime.getType(absPath);
           let imageMeta: any = { width: -1, height: -1 };
           try {
-            const image = sharp(absPath);
-            imageMeta = await image.metadata();
+            if(fileType.split('/')[0] !== 'video') {
+              const image = sharp(absPath);
+              imageMeta = await image.metadata();
+            }
           } catch (e) {
             console.error(e)
           }
