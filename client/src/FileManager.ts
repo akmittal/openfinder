@@ -6,6 +6,7 @@ import './components/InputModal';
 import './components/LoadingSpinner';
 import './components/Settings';
 import './components/InputModalUploadImage';
+import './components/alertDialog';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 
@@ -19,6 +20,7 @@ export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
+  @query('queue-dialog') queueDialog: any;
   @property({ type: String }) serverURL: string = '';
 
   @property({ type: String }) sortColumn: string = 'name';
@@ -26,6 +28,7 @@ export class FileManager extends LitElement {
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
   @property({ type: Boolean }) uploadModalState: boolean = false;
+  @property({ type: Boolean }) alertDialogState: boolean = false;
   @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Boolean }) showsubmit: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
@@ -42,6 +45,9 @@ export class FileManager extends LitElement {
   }
   toggleUploadModal() {
     this.uploadModalState = !this.uploadModalState;
+  }
+  toggleQueueDialog() {
+    this.alertDialogState = !this.alertDialogState;
   }
   onFileUpload = (evt: CustomEvent) => {
     const items = this.vaadinUpload.files.map((file: any) => !file.complete);
@@ -238,7 +244,7 @@ export class FileManager extends LitElement {
       context: this.context.path,
       filename: this.activeItem.name,
       newFilename: data,
-      filePath: this.activeItem.path
+      filePath: this.activeItem.path,
     };
 
     if (this.currentContext === 'dir') {
@@ -253,6 +259,21 @@ export class FileManager extends LitElement {
       headers: { 'content-type': 'application/json' },
     });
   };
+
+  delete = async (e: any) => {
+    const url = `${this.serverURL}/delete`;
+    let body = {
+      filename: this.activeItem.name,
+      context: this.context.path,
+      filePath: this.activeItem.path,
+    };
+    return fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
   handleSearch = (e: any) => {
     this.searchTerm = e.target.value;
   };
@@ -344,6 +365,12 @@ export class FileManager extends LitElement {
     this.thumbsize = e.detail;
   };
 
+  async handleDialogAction(e: any) {
+    if (e.detail.action === 'confirm') {
+      await this.delete(e);
+      this.reloadFiles();
+    }
+  }
   render() {
     return html`<input-modal
         .opened=${this.inputModalState}
@@ -355,6 +382,11 @@ export class FileManager extends LitElement {
         imagePath=${this.activeItem ? this.activeItem.path : ''}
         @onsubmit=${this.handleInoutSelect}
       ></input-modal-upload>
+      <queue-dialog
+        itemName=${this.activeItem ? this.activeItem.name : ''}
+        .opened=${this.alertDialogState}
+        @onaction=${this.handleDialogAction}
+      ></queue-dialog>
       <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
         <of-settings
           .show=${this.showSettings}
@@ -429,6 +461,9 @@ export class FileManager extends LitElement {
                     @click=${(e: Event) => {
                       this.activeItem = file;
                       this.currentContext = 'file';
+                    }}
+                    @ondelete=${(e: Event) => {
+                      this.toggleQueueDialog();
                     }}
                     .selected=${this.activeItem === file}
                   ></file-card>`

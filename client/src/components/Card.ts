@@ -39,6 +39,10 @@ export class Card extends LitElement {
       font-size: 0.8rem;
       color: #999;
     }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+    }
   `;
 
   handleClipUrl(e: Event) {
@@ -48,6 +52,15 @@ export class Card extends LitElement {
       },
       bubbles: true,
       composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+  handleDeleteAction(e: any){
+    if (e.target.tagName != 'VAADIN-BUTTON') {
+      return;
+    }
+    const event = new CustomEvent('ondelete', {
+      detail: e.target.getAttribute('data-action'),
     });
     this.dispatchEvent(event);
   }
@@ -79,10 +92,16 @@ export class Card extends LitElement {
               : ''}
           </div>
         </div>
-        <vaadin-button @click=${this.handleClipUrl}>
-          <iron-icon icon="content-copy" slot="prefix"></iron-icon>
-          Copy Link
-        </vaadin-button>
+        <div class="actions">
+          <vaadin-button @click=${this.handleClipUrl}>
+            <iron-icon icon="content-copy" slot="prefix"></iron-icon>
+            Copy Link
+          </vaadin-button>
+          <vaadin-button @click=${this.handleDeleteAction} data-action="delete">
+            <iron-icon icon="icons:delete-forever" slot="prefix"></iron-icon>
+            Delete
+          </vaadin-button>
+        </div>
       </div>
     `;
   }
