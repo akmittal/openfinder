@@ -185,14 +185,16 @@ function bootstrap(connection, uploadPath) {
                 const fileType = await mime_1.default.getType(absPath);
                 let imageMeta = { width: -1, height: -1 };
                 try {
-                    const image = sharp_1.default(absPath);
-                    imageMeta = await image.metadata();
+                    if (fileType.split('/')[0] !== 'video') {
+                        const image = sharp_1.default(absPath);
+                        imageMeta = await image.metadata();
+                    }
                 }
                 catch (e) {
                     console.error(e);
                 }
                 const xmp = await readDescription(absPath.replace(uploadPath, ""));
-                return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, ""), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split('/')[0] });
+                return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, "").replace(file.name, encodeURIComponent(file.name)), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split('/')[0] });
             });
             const data = await Promise.all(files);
             res.json({ data });

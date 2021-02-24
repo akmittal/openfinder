@@ -207,7 +207,8 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
 
           return {
             ...file,
-            path: absPath.replace(uploadPath, ""),
+         
+            path: absPath.replace(uploadPath, "").replace(file.name, encodeURIComponent(file.name)),
             size: filestats.size,
             modified: filestats.mtime,
             width: imageMeta.width,
