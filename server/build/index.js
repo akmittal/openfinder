@@ -30,6 +30,7 @@ const path_1 = require("path");
 const cors_1 = __importDefault(require("cors"));
 const sharp_1 = __importDefault(require("sharp"));
 const mime_1 = __importDefault(require("mime"));
+const compress_1 = require("./util/compress");
 // const app = express()
 // createConnection().then((connection) => {
 //   app.use("/", bootstrap(connection, resolve("./uploads")))
@@ -161,6 +162,7 @@ function bootstrap(connection, uploadPath) {
     router
         .route("/file")
         .post(upload.single("file"), async (req, res) => {
+        compress_1.CompressImage(req.destinationPath);
         const r = await connection
             .getRepository("image")
             .createQueryBuilder()
