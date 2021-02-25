@@ -15,7 +15,11 @@ import '@vaadin/vaadin-grid/vaadin-grid-tree-column';
 import '@polymer/iron-icon/iron-icon';
 import '@polymer/iron-icons/iron-icons';
 
+import '@shopify/draggable/lib/draggable.bundle.js';
+
 export class FileManager extends LitElement {
+  @query('.app-layout') appShownElem:any;
+
   @query('input-modal') inputModal: any;
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
@@ -50,15 +54,28 @@ export class FileManager extends LitElement {
       this.reloadFiles();
     }
   };
-  connectedCallback() {
-    super.connectedCallback();
-  }
+
+  
 
   attributeChangedCallback(name: string, oldval: any, newval: any) {
     console.log('attribute change: ', name, newval);
     super.attributeChangedCallback(name, oldval, newval);
     if (name === 'appshown' && newval === 'true') {
       this.getFiles(this.context.path);
+    }
+    console.log({a:this.appShownElem})
+    if(this.appShownElem){
+      console.log(this.querySelectorAll("file-card"))
+  
+      new Draggable.Draggable(this.appShownElem, {
+      draggable: 'file-card',
+      dropzone: 'file-directories',
+    });
+
+    new Draggable.Droppable(this.appShownElem, {
+      draggable: 'file-card',
+      dropzone: 'file-directories',
+    });
     }
   }
   async reloadFiles() {
@@ -238,7 +255,7 @@ export class FileManager extends LitElement {
       context: this.context.path,
       filename: this.activeItem.name,
       newFilename: data,
-      filePath: this.activeItem.path
+      filePath: this.activeItem.path,
     };
 
     if (this.currentContext === 'dir') {
@@ -303,27 +320,27 @@ export class FileManager extends LitElement {
         break;
       case 'rename':
         await this.rename(evt.detail);
-        this.resetSelection()
-        
+        this.resetSelection();
+
         this.toggleInputModal();
         this.reloadFiles();
         break;
       case 'replace':
         this.toggleUploadModal();
         this.reloadFiles();
-        this.resetSelection()
+        this.resetSelection();
         break;
       case 'change-alt':
         await this.changeAlt(evt.detail);
         this.toggleInputModal();
         this.reloadFiles();
-        this.resetSelection()
+        this.resetSelection();
         break;
     }
   };
-  resetSelection(){
+  resetSelection() {
     this.activeItem = null;
-    this.currentContext = "dir";
+    this.currentContext = 'dir';
   }
   handleSortChange(e: CustomEvent) {
     console.log(e.detail, this.files);

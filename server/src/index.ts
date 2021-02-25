@@ -6,6 +6,7 @@ import cors from "cors";
 import sharp from "sharp";
 import { Connection, createConnection } from "typeorm";  
 import mime from "mime";
+import { CompressImage } from "./util/compress";
 
 
 // const app = express()
@@ -91,6 +92,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     storage,
     limits: { fileSize: 200 * 1024 * 1024 },
     fileFilter: fileFilter,
+    
   });
 
   router
@@ -170,6 +172,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     .post(
       upload.single("file"),
       async (req: Request & { destinationPath: string }, res) => {
+        CompressImage(req.destinationPath);
         const r = await connection
           .getRepository("image")
           .createQueryBuilder()
