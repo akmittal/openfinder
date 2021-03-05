@@ -55,12 +55,15 @@ export class Card extends LitElement {
     });
     this.dispatchEvent(event);
   }
-  handleDeleteAction(e: any){
+  handleDeleteAction(e: any) {
     if (e.target.tagName != 'VAADIN-BUTTON') {
       return;
     }
     const event = new CustomEvent('ondelete', {
-      detail: e.target.getAttribute('data-action'),
+      detail: {
+        data: e.target.getAttribute('data-action'),
+        action: 'delete',
+      },
     });
     this.dispatchEvent(event);
   }

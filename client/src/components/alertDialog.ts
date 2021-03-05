@@ -12,7 +12,7 @@ import '@material/mwc-button';
 @customElement('queue-dialog')
 export class QueueModal extends LitElement {
   @property({ type: Boolean }) opened = false;
-  @property({ type: String}) itemName = '';
+  @property({ type: String }) message = '';
   static styles = css`
     :host {
       display: flex;
@@ -35,7 +35,7 @@ export class QueueModal extends LitElement {
         heading="Warning"
         @click=${this.handleClick}
       >
-        <p>Are you sure want to delete this image... ${this.itemName}</p>
+        <p>${this.message}</p>
         <mwc-button slot="primaryAction" dialogAction="confirm"
           >Confirm</mwc-button
         >

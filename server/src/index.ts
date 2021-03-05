@@ -188,6 +188,76 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
+  router.route("/move").post(async (req: Request, res: Response) => {
+    let { context, filename, newPath } = req.body;
+    const resolvedSource = join(uploadPath, context, filename);
+    const resolvedTarget = join(uploadPath, newPath, filename);
+    try {
+      fs.renameSync(resolvedSource, resolvedTarget);
+      await connection
+        .getRepository("image")
+        .createQueryBuilder()
+        .update("image")
+        .set({ path: join(newPath, filename) })
+        .where("path=:path", { path: join(context, filename) })
+        .execute();
+      res.json({ msg: "done" });
+    } catch (err) {
+      res.send(err);
+      console.log("Error in Move Operation", err);
+    }
+  });
+
+  router.route("/renameDirectory").post(async (req: Request, res: Response) => {
+    let { context, newDirname, leafNode } = req.body;
+    const resolvedCurrDir = join(uploadPath, context);
+    const resolvedTarget = join(
+      uploadPath,
+      context.replace(leafNode, newDirname)
+    );
+    const filteredTargetPath = resolvedTarget.replace(uploadPath, "");
+    try {
+      if (fs.statSync(resolvedCurrDir).isDirectory()) {
+        fs.renameSync(resolvedCurrDir, resolvedTarget);
+        await connection
+          .getRepository("image")
+          .createQueryBuilder()
+          .update("image")
+          .set({ path: ()=>`REPLACE(path,'${context}', '${filteredTargetPath}')`})
+          .where(`path LIKE :path`, { path: `%${context}%` })
+          .execute();
+
+        res.json({ msg: "done" });
+      }
+    } catch (err) {
+      res.send(err);
+      console.error("Error in rename directory operation", err);
+    }
+  });
+
+  router.route("/moveDir").post(async (req: Request, res: Response) => {
+    let { context, newPath, currentDir, leafNode } = req.body;
+    const resolvedCurrDir = join(uploadPath, currentDir);
+    const resolvedTarget = join(uploadPath, newPath, "/", leafNode);
+    const targetDirPath = join(newPath, "/", leafNode);
+    try {
+      if (fs.statSync(resolvedCurrDir).isDirectory()) {
+        fs.renameSync(resolvedCurrDir, resolvedTarget);
+        await connection
+          .getRepository("image")
+          .createQueryBuilder()
+          .update("image")
+          .set({ path: ()=>`REPLACE(path,'${currentDir}', '${targetDirPath}')`})
+          .where(`path LIKE :path`, { path: `%${currentDir}%` })
+          .execute();
+        res.json({ msg: "done" });
+      }
+    } catch (err) {
+      res.send(err);
+      console.error("Error in move directory operation", err);
+    }
+  });
+
   router
     .route("/file")
     .post(
