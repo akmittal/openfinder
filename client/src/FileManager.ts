@@ -311,7 +311,6 @@ export class FileManager extends LitElement {
   }
 
   moveDirectory() {
-    console.log('callled');
     const url = `${this.serverURL}/moveDir`;
     let body = {
       context: this.context.path,
@@ -380,6 +379,8 @@ export class FileManager extends LitElement {
         break;
       case 'rename':
         await this.rename(evt.detail);
+        this.resetSelection();
+
         this.toggleInputModal();
         this.reloadFiles();
         break;
@@ -393,14 +394,20 @@ export class FileManager extends LitElement {
       case 'replace':
         this.toggleUploadModal();
         this.reloadFiles();
+        this.resetSelection();
         break;
       case 'change-alt':
         await this.changeAlt(evt.detail);
         this.toggleInputModal();
         this.reloadFiles();
+        this.resetSelection();
         break;
     }
   };
+  resetSelection() {
+    this.activeItem = null;
+    this.currentContext = 'dir';
+  }
   handleSortChange(e: CustomEvent) {
     console.log(e.detail, this.files);
     this.sortColumn = e.detail.column;

@@ -8,7 +8,7 @@
     "format": "npm run format:eslint && npm run format:prettier",
     "storybook": "concurrently --kill-others --names tsc,storybook \"npm run tsc:watch\" \"start-storybook --node-resolve --watch --open\"",
     "storybook:build": "build-storybook",
-    "build": "rimraf dist && tsc && rollup -c rollup.config.js",
+    "build": "NODE_ENV=production rimraf dist && tsc && rollup -c rollup.config.js",
     "start:build": "npm run build && web-dev-server --root-dir dist --app-index index.html --open --compatibility none",
     "start": "concurrently --kill-others --names tsc,web-dev-server \"npm run tsc:watch\" \"web-dev-server --app-index index.html --node-resolve --open --watch\"",
     "tsc:watch": "tsc --watch"
@@ -56,7 +56,7 @@
     ]
   },
   "name": "@openfinder/client",
-  "version": "1.1.1",
+  "version": "1.1.5",
   "description": "Webcomponent file-manager following open-wc recommendations",
   "author": "file-manager",
   "license": "MIT",
