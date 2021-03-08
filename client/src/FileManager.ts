@@ -473,6 +473,7 @@ export class FileManager extends LitElement {
       this.__draggingElement = draggedEl;
       this.handleDialogMessage(e);
       this.toggleQueueDialog();
+      return;
     }
     if (
       action === 'image:Drag' &&
@@ -593,7 +594,10 @@ export class FileManager extends LitElement {
                       e.preventDefault();
                       this.activeItem = file;
                     }}
-                    @ondelete=${this.handleDeleteAction}
+                    @ondelete=${(e:any)=>{
+                      this.activeItem = file;
+                      this.handleDeleteAction(e)
+                    }}
                     .selected=${this.activeItem === file}
                   ></file-card>`
               )}
