@@ -6,6 +6,7 @@ import './components/InputModal';
 import './components/LoadingSpinner';
 import './components/Settings';
 import './components/InputModalUploadImage';
+import './components/SearchContent'
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 
@@ -15,11 +16,8 @@ import '@vaadin/vaadin-grid/vaadin-grid-tree-column';
 import '@polymer/iron-icon/iron-icon';
 import '@polymer/iron-icons/iron-icons';
 
-import '@shopify/draggable/lib/draggable.bundle.js';
 
 export class FileManager extends LitElement {
-  @query('.app-layout') appShownElem:any;
-
   @query('input-modal') inputModal: any;
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
@@ -38,6 +36,7 @@ export class FileManager extends LitElement {
   @property({ type: Boolean }) showSettings: boolean = false;
   @property({ type: Object }) context: any = { path: '/' };
   @property({ type: Object }) activeItem: any = null;
+  @property({ type: Object }) searchActiveItem: any = null;
   @property({ type: String }) currentContext = 'dir';
   @property({ type: String }) searchTerm = '';
   @property({ type: Boolean }) isLoading: boolean = false;
@@ -55,27 +54,11 @@ export class FileManager extends LitElement {
     }
   };
 
-  
-
   attributeChangedCallback(name: string, oldval: any, newval: any) {
     console.log('attribute change: ', name, newval);
     super.attributeChangedCallback(name, oldval, newval);
     if (name === 'appshown' && newval === 'true') {
       this.getFiles(this.context.path);
-    }
-    console.log({a:this.appShownElem})
-    if(this.appShownElem){
-      console.log(this.querySelectorAll("file-card"))
-  
-      new Draggable.Draggable(this.appShownElem, {
-      draggable: 'file-card',
-      dropzone: 'file-directories',
-    });
-
-    new Draggable.Droppable(this.appShownElem, {
-      draggable: 'file-card',
-      dropzone: 'file-directories',
-    });
     }
   }
   async reloadFiles() {
@@ -143,6 +126,14 @@ export class FileManager extends LitElement {
       background-color: var(--lumo-base-color);
     }
     .image-wrapper {
+      display: flex;
+      justify-content: center;
+
+      flex-direction: row;
+      flex-wrap: wrap;
+      overflow-y: scroll;
+    }
+    .search-wrapper {
       display: flex;
       justify-content: center;
 
@@ -270,8 +261,20 @@ export class FileManager extends LitElement {
       headers: { 'content-type': 'application/json' },
     });
   };
-  handleSearch = (e: any) => {
+  handleSearch = async (e: any) => {
     this.searchTerm = e.target.value;
+    this.files = [];
+    let searchfilelist = [];
+    if (this.searchTerm.length > 0) {
+      searchfilelist = (
+        await (
+          await fetch(`${this.serverURL}/search?key=${this.searchTerm}`)
+        ).json()
+      ).data;
+      this.files = searchfilelist;
+    } else {
+      this.files = [];
+    }
   };
   handleFileAction = (e: CustomEvent) => {
     switch (e.detail) {
@@ -392,6 +395,7 @@ export class FileManager extends LitElement {
           <file-actions
             selectedItemType=${this.activeItem ? this.activeItem.type : ''}
             context=${this.currentContext}
+            .search=${this.searchTerm}
             @onaction=${this.handleFileAction}
           ></file-actions>
           <div class="padding-x">
@@ -427,51 +431,60 @@ export class FileManager extends LitElement {
             @upload-success=${this.onFileUpload}
           >
           </vaadin-upload>
-
-          <div class="image-wrapper">
-            ${this.getSortedFiles().length === 0
-              ? html`<h4>No files Found</h4>`
-              : html``}
-            ${this.getSortedFiles()
-              .filter(file => {
-                if (!this.searchTerm) {
-                  return true;
-                } else {
-                  return file.name
-                    .toLowerCase()
-                    .includes(this.searchTerm.toLowerCase());
-                }
-              })
-              .map(
-                file =>
-                  html`<file-card
-                    style=${`width:${this.thumbsize}em`}
-                    .serverURL=${this.serverURL}
-                    .data=${file}
-                    @dblclick=${(e: Event) => {
-                      this.handleSubmit(e);
-                    }}
-                    @click=${(e: Event) => {
-                      this.activeItem = file;
-                      this.currentContext = 'file';
-                    }}
-                    .selected=${this.activeItem === file}
-                  ></file-card>`
-              )}
+          ${this.searchTerm.length === 0
+            ? html` <div class="image-wrapper">
+                ${this.getSortedFiles().length === 0
+                  ? html`<h4>No files Found</h4>`
+                  : html``}
+                ${this.getSortedFiles().map(
+                  file =>
+                    html`<file-card
+                      style=${`width:${this.thumbsize}em`}
+                      .serverURL=${this.serverURL}
+                      .data=${file}
+                      @dblclick=${(e: Event) => {
+                        this.handleSubmit(e);
+                      }}
+                      @click=${(e: Event) => {
+                        this.activeItem = file;
+                        this.currentContext = 'file';
+                      }}
+                      .selected=${this.activeItem === file}
+                    ></file-card>`
+                )}
+              </div>`
+            : html`
+          <div class="search-wrapper">
+            ${
+              this.files.length === 0
+                ? html`<h4>No files Found</h4>`
+                : html`
+                    <search-content
+                      .serverURL=${this.serverURL}
+                      .files=${this.files}
+                      .sortColumn=${this.sortColumn}
+                      .sortFile=${this.getSortedFiles}
+                      .isAscending=${this.isAscending}
+                      .thumbsize=${this.thumbsize}
+                    ></search-content>
+                  `
+            }
           </div>
         </div>
+        `}
 
-        <section class=${`selection ${!this.showsubmit ? 'hidden' : ''}`}>
-          <section>
-            <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
-            <vaadin-button
-              theme="primary"
-              @click=${this.handleSubmit}
-              .disabled=${!this.activeItem}
-              >Submit</vaadin-button
-            >
+          <section class=${`selection ${!this.showsubmit ? 'hidden' : ''}`}>
+            <section>
+              <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
+              <vaadin-button
+                theme="primary"
+                @click=${this.handleSubmit}
+                .disabled=${!this.activeItem}
+                >Submit</vaadin-button
+              >
+            </section>
           </section>
-        </section>
+        </div>
       </div> `;
   }
 }

@@ -1,26 +1,31 @@
-import { default as express, Request, Response, Router, json, urlencoded, static as staticServer } from "express";
+import {
+  default as express,
+  Request,
+  Response,
+  Router,
+  json,
+  urlencoded,
+  static as staticServer,
+} from "express";
 import multer, { FileFilterCallback } from "multer";
 import fs, { readdirSync } from "fs";
 import { join, resolve, extname } from "path";
 import cors from "cors";
 import sharp from "sharp";
-import { Connection, createConnection } from "typeorm";  
+import { Connection, createConnection } from "typeorm";
 import mime from "mime";
 import { CompressImage } from "./util/compress";
 
+const app = express();
+createConnection().then((connection) => {
+  app.use("/", bootstrap(connection, resolve("./uploads")));
+  app.listen(5000, () => {
+    console.log("started");
+  });
+});
 
-// const app = express()
-// createConnection().then((connection) => {
-//   app.use("/", bootstrap(connection, resolve("./uploads")))
-//   app.listen(5000, () => {
-//     console.log("started")
-//   })
-// })
-
-
-export function bootstrap(connection: Connection, uploadPath:string):Router {
- 
-  const router = Router()
+export function bootstrap(connection: Connection, uploadPath: string): Router {
+  const router = Router();
 
   router.use(cors());
   const checkMimeList = ['video','image'];
@@ -41,7 +46,9 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     readdirSync(source, { withFileTypes: true }).filter(
       (dirent) =>
         !dirent.isDirectory() &&
-        checkMimeList.includes(mime.getType(join(source, dirent.name))?.split('/')[0])
+        checkMimeList.includes(
+          mime.getType(join(source, dirent.name))?.split("/")[0]
+        )
     );
 
   router.use(json());
@@ -92,18 +99,17 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     storage,
     limits: { fileSize: 200 * 1024 * 1024 },
     fileFilter: fileFilter,
-    
   });
 
   router
     .route("/directory")
-    .post((req:Request, res:Response) => {
+    .post((req: Request, res: Response) => {
       const { context, dir } = req.body;
       const resolvedPath = join(uploadPath, context, dir);
       fs.mkdirSync(resolvedPath);
       res.json({ msg: "hello" });
     })
-    .get((req:Request, res:Response) => {
+    .get((req: Request, res: Response) => {
       const context: any = req.query.context;
       const resolvedPath = join(uploadPath, context);
       let dirs = getDirectories(resolvedPath).map((dir) => ({
@@ -158,7 +164,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
         outStream.write(file.buffer);
         outStream.end();
         outStream.on("finish", function (err: any) {
-          if(!err) {
+          if (!err) {
             res.json({ msg: "done" });
           }
         });
@@ -166,6 +172,61 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
         console.error(err);
       }
     });
+
+  router.route("/search").get(async (req: Request, res) => {
+    try {
+      let keyword: any = req.query.key;
+      let filterCondition = {
+        name: `%${keyword}%`,
+        path: `%${keyword}%`,
+      };
+      let files = await connection
+        .getRepository("image")
+        .createQueryBuilder("image")
+        .select(["image.name", "image.path", "image.alt"])
+        .where(
+          "image.name like :name OR image.path like :path",
+          filterCondition
+        )
+        .getMany();
+      if (files) {
+        files = files
+          .filter((file: any) => {
+            if (fs.existsSync(join(uploadPath, file.path))) {
+              return file;
+            }
+          })
+          .map(async (file: any, index: any) => {
+            const absPath = join(uploadPath, file.path);
+            const filestats = fs.statSync(absPath);
+            const fileType = await mime.getType(absPath);
+            let imageMeta: any = { width: -1, height: -1 };
+
+            if (fileType.split("/")[0] !== "video") {
+              const image = sharp(absPath);
+              imageMeta = await image.metadata();
+            }
+            return {
+              name: file.name,
+              path: absPath
+                .replace(uploadPath, "")
+                .replace(file.name, encodeURIComponent(file.name)),
+              size: filestats.size,
+              modified: filestats.mtime,
+              width: imageMeta.width,
+              height: imageMeta.height,
+              description: file.alt,
+              type: fileType?.split("/")[0],
+            };
+          });
+      }
+      const data = await Promise.all(files);
+      res.json({ data });
+    } catch (err) {
+      res.send(err);
+      console.error(err);
+    }
+  });
 
   router
     .route("/file")
@@ -188,7 +249,7 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
         res.json({ r });
       }
     )
-    .get(async (req:Request, res:Response) => {
+    .get(async (req: Request, res: Response) => {
       try {
         const context: any = req.query.context;
         const resolvedDir = join(uploadPath, context);
@@ -198,26 +259,28 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
           const fileType = await mime.getType(absPath);
           let imageMeta: any = { width: -1, height: -1 };
           try {
-            if(fileType.split('/')[0] !== 'video') {
+            if (fileType.split("/")[0] !== "video") {
               const image = sharp(absPath);
               imageMeta = await image.metadata();
             }
           } catch (e) {
-            console.error(e)
+            console.error(e);
           }
 
           const xmp = await readDescription(absPath.replace(uploadPath, ""));
 
           return {
             ...file,
-         
-            path: absPath.replace(uploadPath, "").replace(file.name, encodeURIComponent(file.name)),
+
+            path: absPath
+              .replace(uploadPath, "")
+              .replace(file.name, encodeURIComponent(file.name)),
             size: filestats.size,
             modified: filestats.mtime,
             width: imageMeta.width,
             height: imageMeta.height,
             description: xmp,
-            type: fileType?.split('/')[0]
+            type: fileType?.split("/")[0],
           };
         });
         const data = await Promise.all(files);
@@ -240,8 +303,6 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
   });
 
   router.use("/static", staticServer(uploadPath));
- 
-
 
   async function readDescription(path: string) {
     const res: any = await connection
@@ -255,5 +316,5 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
       .getRepository("image")
       .update({ path }, { alt: description });
   }
-  return router
+  return router;
 }
