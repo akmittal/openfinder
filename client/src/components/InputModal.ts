@@ -20,18 +20,20 @@ export class InputModal extends LitElement {
       display: flex;
     }
   `;
-  handleClick() {
-    const event = new CustomEvent('onsubmit', { detail: this.input.value });
-    this.dispatchEvent(event);
-    this.input.value = "";
+  handleClick(e:any) {
+    if(this.input.value.length>0) {
+      const event = new CustomEvent('onsubmit', { detail: this.input.value });
+      this.dispatchEvent(event);
+      this.input.value = "";
+    }
   }
 
   render() {
     return html`
       <mwc-dialog .open=${this.opened}>
-        <vaadin-text-field @keypress=${(e:KeyboardEvent) => {
+        <vaadin-text-field required=true @keypress=${(e:KeyboardEvent) => {
           if(e.key ==="Enter"){
-            this.handleClick()
+            this.handleClick(e)
           }
         }}></vaadin-text-field>
         <vaadin-button @click=${this.handleClick}>Submit</vaadin-button>
