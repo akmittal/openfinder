@@ -170,6 +170,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           }
         });
       } catch (err) {
+        res.status(500).send(err);
         console.error(err);
       }
     });
@@ -187,6 +188,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       res.json({ msg: "done" });
     } catch (e) {
       console.log("Error in Delete Operation", e);
+      res.status(500).send(e);
     }
   });
 
@@ -205,43 +207,56 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
         .execute();
       res.json({ msg: "done" });
     } catch (err) {
-      res.send(err);
       console.log("Error in Move Operation", err);
+      res.status(500).send(err);
     }
   });
 
   router.route("/renameDirectory").post(async (req: Request, res: Response) => {
     let { context, newDirname, leafNode } = req.body;
     const resolvedCurrDir = join(uploadPath, context);
+    const lastPosition = context.lastIndexOf(leafNode);
+    const newPath = context.substring(0, lastPosition) + newDirname;
+
     const resolvedTarget = join(
       uploadPath,
-      context.replace(leafNode, newDirname)
+      context.substring(0, lastPosition),
+      newDirname
     );
-    const filteredTargetPath = resolvedTarget.replace(uploadPath, "");
     try {
       if (fs.statSync(resolvedCurrDir).isDirectory()) {
         fs.renameSync(resolvedCurrDir, resolvedTarget);
+
         await connection
           .getRepository("image")
           .createQueryBuilder()
           .update("image")
-          .set({ path: ()=>`REPLACE(path,'${context}', '${filteredTargetPath}')`})
+          .set({
+            path: () =>
+              `CONCAT('${newPath}',SUBSTR(path,${
+                context.length + 1
+              },LENGTH(path)) )`,
+          })
           .where(`path LIKE :path`, { path: `%${context}%` })
           .execute();
 
         res.json({ msg: "done" });
       }
     } catch (err) {
-      res.send(err);
       console.error("Error in rename directory operation", err);
+      res.status(500).send(err);
     }
   });
 
   router.route("/moveDir").post(async (req: Request, res: Response) => {
     let { context, newPath, currentDir, leafNode } = req.body;
     const resolvedCurrDir = join(uploadPath, currentDir);
-    const resolvedTarget = join(uploadPath, newPath, "/", leafNode);
-    const targetDirPath = join(newPath, "/", leafNode);
+    const lastIndexNode = currentDir.lastIndexOf(leafNode);
+    const sublastnode = currentDir.substring(lastIndexNode-1,currentDir.length);
+
+    const resolvedTarget = join(uploadPath, newPath, sublastnode);
+    const targetDirPath = join(newPath, sublastnode);
+
     try {
       if (fs.statSync(resolvedCurrDir).isDirectory()) {
         fs.renameSync(resolvedCurrDir, resolvedTarget);
@@ -255,8 +270,8 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
         res.json({ msg: "done" });
       }
     } catch (err) {
-      res.send(err);
       console.error("Error in move directory operation", err);
+      res.status(500).send(err);
     }
   });
 

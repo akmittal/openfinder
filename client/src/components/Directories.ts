@@ -26,6 +26,10 @@ export class Directories extends LitElement {
     }
     vaadin-grid-cell-content[active] {
       border: 2px solid red;
+      -webkit-user-drag: element;
+    }
+    vaadin-grid-cell-content{
+      -webkit-user-drag: element;
     }
   `;
 
@@ -33,7 +37,6 @@ export class Directories extends LitElement {
     e.preventDefault();
     const dropTarget = e.detail.dragData ? e.detail.dragData[0] : [];
     let droptAction;
-
     if (dropTarget.type === 'text/uri-list') {
       droptAction = 'image:Drag';
     } else {

@@ -31,6 +31,7 @@ export class FileManager extends LitElement {
   @property({ type: Boolean }) alertDialogState: boolean = false;
   @property({ type: String }) alertmessage = '';
   @property({ type: String }) OprType = '';
+  @property({ type: String }) renameDirKey = '';
   @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Boolean }) showsubmit: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
@@ -385,11 +386,11 @@ export class FileManager extends LitElement {
         this.reloadFiles();
         break;
       case 'rename-Directory':
-        await this.renameDirectory(evt.detail);
-        this.context = { path: '/' };
-        this.directryKey = Math.random();
+        this.renameDirKey = evt.detail;
+        this.OprType = 'rename-dir';
+        this.alertmessage = `Are you sure want to rename this directory ${this.context.path}`;
         this.toggleInputModal();
-        this.reloadFiles();
+        this.toggleQueueDialog()
         break;
       case 'replace':
         this.toggleUploadModal();
@@ -453,6 +454,13 @@ export class FileManager extends LitElement {
           this.context = { path: '/' };
           this.reloadFiles();
           break;
+        case 'rename-dir':
+          this.toggleQueueDialog();
+          await this.renameDirectory(this.renameDirKey);
+          this.context = { path: '/' };
+          this.directryKey = Math.random();
+          this.renameDirKey = '';
+          this.reloadFiles();
       }
     } else {
       this.alertDialogState = false;
@@ -473,8 +481,10 @@ export class FileManager extends LitElement {
   }
   handlequeue(e: any) {
     const { draggedEl, data, action } = e.detail;
-    const targetPathList = data.dropTargetItem.path.split('/');
-    if (draggedEl && !targetPathList.includes(draggedEl.name)) {
+    const draggedElPathLength = draggedEl.path.length;
+    const sub =  data.dropTargetItem.path.substring(0,draggedElPathLength);
+
+    if (draggedEl && draggedEl.path !==  data.dropTargetItem.path &&  draggedEl.path !== sub ) {
       this.OprType = e.detail.action;
       this.__movedlocation = e.detail.data;
       this.__draggingElement = draggedEl;
