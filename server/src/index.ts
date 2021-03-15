@@ -251,11 +251,15 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
   router.route("/moveDir").post(async (req: Request, res: Response) => {
     let { context, newPath, currentDir, leafNode } = req.body;
     const resolvedCurrDir = join(uploadPath, currentDir);
-    const lastIndexNode = currentDir.lastIndexOf(leafNode);
-    const sublastnode = currentDir.substring(lastIndexNode-1,currentDir.length);
-
+    let lastIndexNode = currentDir.lastIndexOf(leafNode);
+    const sublastnode = currentDir.substring(
+      lastIndexNode - 1,
+      currentDir.length
+    );
+    if (newPath === "/") {
+      newPath = "";
+    }
     const resolvedTarget = join(uploadPath, newPath, sublastnode);
-    const targetDirPath = join(newPath, sublastnode);
 
     try {
       if (fs.statSync(resolvedCurrDir).isDirectory()) {
@@ -264,7 +268,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .getRepository("image")
           .createQueryBuilder()
           .update("image")
-          .set({ path: ()=>`REPLACE(path,'${currentDir}', '${targetDirPath}')`})
+          .set({
+            path: () =>
+              `CONCAT('${newPath}',SUBSTR(path,${lastIndexNode},LENGTH(path)) )`,
+          })
           .where(`path LIKE :path`, { path: `%${currentDir}%` })
           .execute();
         res.json({ msg: "done" });
