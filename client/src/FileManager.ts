@@ -15,7 +15,6 @@ import '@vaadin/vaadin-grid/vaadin-grid-tree-column';
 import '@polymer/iron-icon/iron-icon';
 import '@polymer/iron-icons/iron-icons';
 
-import '@shopify/draggable/lib/draggable.bundle.js';
 
 export class FileManager extends LitElement {
   @query('.app-layout') appShownElem:any;
@@ -63,20 +62,7 @@ export class FileManager extends LitElement {
     if (name === 'appshown' && newval === 'true') {
       this.getFiles(this.context.path);
     }
-    console.log({a:this.appShownElem})
-    if(this.appShownElem){
-      console.log(this.querySelectorAll("file-card"))
-  
-      new Draggable.Draggable(this.appShownElem, {
-      draggable: 'file-card',
-      dropzone: 'file-directories',
-    });
-
-    new Draggable.Droppable(this.appShownElem, {
-      draggable: 'file-card',
-      dropzone: 'file-directories',
-    });
-    }
+    
   }
   async reloadFiles() {
     this.getFiles(this.context.path);
@@ -368,6 +354,12 @@ export class FileManager extends LitElement {
   handleThumbChange = (e: CustomEvent) => {
     this.thumbsize = e.detail;
   };
+  changeFileContext =(file:any) =>{
+   
+      this.activeItem = file;
+      this.currentContext = 'file';
+    
+  }
 
   render() {
     return html`<input-modal
@@ -448,13 +440,9 @@ export class FileManager extends LitElement {
                     style=${`width:${this.thumbsize}em`}
                     .serverURL=${this.serverURL}
                     .data=${file}
-                    @dblclick=${(e: Event) => {
-                      this.handleSubmit(e);
-                    }}
-                    @click=${(e: Event) => {
-                      this.activeItem = file;
-                      this.currentContext = 'file';
-                    }}
+                    @dblclick=${
+                      this.handleSubmit}
+                    @click=${() => this.changeFileContext(file)}
                     .selected=${this.activeItem === file}
                   ></file-card>`
               )}
