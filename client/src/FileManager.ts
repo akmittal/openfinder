@@ -262,11 +262,7 @@ export class FileManager extends LitElement {
       url = `${this.serverURL}/rename`;
     }
 
-    return fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json' },
-    });
+    return this.fetchContent(url,body);
   };
 
   renameDirectory = (data: any) => {
@@ -276,13 +272,16 @@ export class FileManager extends LitElement {
       leafNode: this.context.name,
       newDirname: data,
     };
-    return fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json' },
-    });
+    return this.fetchContent(url,body);
   };
 
+  fetchContent=(url:any,opts:any) =>{
+    return fetch(url,{
+      method: 'POST',
+      body: JSON.stringify(opts),
+      headers: { 'content-type': 'application/json' },
+    });
+  }
   delete = async (e: any) => {
     const url = `${this.serverURL}/delete`;
     let body = {
@@ -290,11 +289,7 @@ export class FileManager extends LitElement {
       context: this.context.path,
       filePath: this.activeItem.path,
     };
-    return fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json' },
-    });
+    return this.fetchContent(url,body);
   };
 
   moveImage() {
@@ -304,11 +299,7 @@ export class FileManager extends LitElement {
       context: this.context.path,
       newPath: this.__movedlocation.dropTargetItem.path,
     };
-    return fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json' },
-    });
+    return this.fetchContent(url,body);
   }
 
   moveDirectory() {
@@ -319,11 +310,7 @@ export class FileManager extends LitElement {
       leafNode: this.__draggingElement.name,
       newPath: this.__movedlocation.dropTargetItem.path,
     };
-    return fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json' },
-    });
+    return this.fetchContent(url,body);
   }
   handleSearch = (e: any) => {
     this.searchTerm = e.target.value;
@@ -481,8 +468,12 @@ export class FileManager extends LitElement {
   }
   handlequeue(e: any) {
     const { draggedEl, data, action } = e.detail;
-    const draggedElPathLength = draggedEl.path.length;
-    const sub =  data.dropTargetItem.path.substring(0,draggedElPathLength);
+    let draggedElPathLength ;
+    let sub;
+    if(draggedEl) {
+      draggedElPathLength = draggedEl.path.length;
+      sub =  data.dropTargetItem.path.substring(0,draggedElPathLength);
+    }
 
     if (draggedEl && draggedEl.path !==  data.dropTargetItem.path &&  draggedEl.path !== sub ) {
       this.OprType = e.detail.action;
