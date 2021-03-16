@@ -30,7 +30,6 @@ const path_1 = require("path");
 const cors_1 = __importDefault(require("cors"));
 const sharp_1 = __importDefault(require("sharp"));
 const mime_1 = __importDefault(require("mime"));
-const compress_1 = require("./util/compress");
 // const app = express()
 // createConnection().then((connection) => {
 //   app.use("/", bootstrap(connection, resolve("./uploads")))
@@ -72,13 +71,13 @@ function bootstrap(connection, uploadPath) {
             cb(null, resolvedPath);
         },
         filename: (req, file, cb) => {
-            const filename = file.originalname;
+            const filename = `${removeExtension(file.originalname)}-${Date.now()}.${getExtension(file.originalname)}`;
             req.destinationPath = path_1.join(req.destinationDir, filename);
             cb(null, filename);
         },
     });
     function fileFilter(req, file, cb) {
-        if (checkMimeList.includes(file.mimetype.split("/")[0])) {
+        if (file.mimetype.split("/")[0] === "image" || file.mimetype.split("/")[0] === "video") {
             cb(null, true);
         }
         else {
@@ -111,53 +110,15 @@ function bootstrap(connection, uploadPath) {
         }
         res.json({ data: dirs });
     });
-    router.route("/rename").post(async (req, res) => {
-        let { context, filename, newFilename, filePath } = req.body;
-        try {
-            if (!newFilename.includes(".")) {
-                newFilename = `${newFilename}${path_1.extname(filename)}`;
-            }
-            const resolvedSource = path_1.join(uploadPath, context, filename);
-            const resolvedTarget = path_1.join(uploadPath, context, newFilename);
-            fs_1.default.renameSync(resolvedSource, resolvedTarget);
-            await connection
-                .getRepository("image")
-                .createQueryBuilder()
-                .update("image")
-                .set({ name: newFilename, path: path_1.join(context, newFilename) })
-                .where("path=:path", { path: filePath })
-                .execute();
-            res.json({ msg: "done" });
+    router.route("/rename").post((req, res) => {
+        let { context, filename, newFilename } = req.body;
+        if (!newFilename.includes(".")) {
+            newFilename = `${newFilename}${path_1.extname(filename)}`;
         }
-        catch (e) {
-            console.log("Error in Rename op", e);
-        }
-    });
-    // another multer instance for file replace
-    const imgReplaceMulterInst = multer_1.default({
-        limits: { fileSize: 20 * 1024 * 1024 },
-        fileFilter: fileFilter,
-    });
-    router
-        .route("/replace")
-        .post(imgReplaceMulterInst.single("file"), async (req, res) => {
-        try {
-            let imagePath = req.query.path;
-            let file = req.file;
-            const filename = imagePath.replace("/", "");
-            const resolvedSource = path_1.join(uploadPath, filename);
-            const outStream = fs_1.default.createWriteStream(resolvedSource);
-            outStream.write(file.buffer);
-            outStream.end();
-            outStream.on("finish", function (err) {
-                if (!err) {
-                    res.json({ msg: "done" });
-                }
-            });
-        }
-        catch (err) {
-            console.error(err);
-        }
+        const resolvedSource = path_1.join(uploadPath, context, filename);
+        const resolvedTarget = path_1.join(uploadPath, context, newFilename);
+        fs_1.default.renameSync(resolvedSource, resolvedTarget);
+        res.json({ msg: "done" });
     });
     router.route("/search").get(async (req, res) => {
         try {
@@ -213,7 +174,6 @@ function bootstrap(connection, uploadPath) {
     router
         .route("/file")
         .post(upload.single("file"), async (req, res) => {
-        compress_1.CompressImage(req.destinationPath);
         const r = await connection
             .getRepository("image")
             .createQueryBuilder()
@@ -238,16 +198,14 @@ function bootstrap(connection, uploadPath) {
                 const fileType = await mime_1.default.getType(absPath);
                 let imageMeta = { width: -1, height: -1 };
                 try {
-                    if (fileType.split('/')[0] !== 'video') {
-                        const image = sharp_1.default(absPath);
-                        imageMeta = await image.metadata();
-                    }
+                    const image = sharp_1.default(absPath);
+                    imageMeta = await image.metadata();
                 }
                 catch (e) {
                     console.error(e);
                 }
                 const xmp = await readDescription(absPath.replace(uploadPath, ""));
-                return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, "").replace(file.name, encodeURIComponent(file.name)), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split('/')[0] });
+                return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, ""), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split('/')[0] });
             });
             const data = await Promise.all(files);
             res.json({ data });
