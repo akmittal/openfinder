@@ -66,6 +66,13 @@ export class FileManager extends LitElement {
     }
   };
 
+  connectedCallback() {
+    super.connectedCallback();
+    this.shadowRoot?.addEventListener('onqueueaction', (e: any) => {
+      this.handlequeue(e);
+    });
+  }
+
   attributeChangedCallback(name: string, oldval: any, newval: any) {
     console.log('attribute change: ', name, newval);
     super.attributeChangedCallback(name, oldval, newval);
@@ -317,7 +324,7 @@ export class FileManager extends LitElement {
     };
     return this.fetchContent(url, body);
   }
-  handleSearch = async(e: any) => {
+  handleSearch = async (e: any) => {
     this.searchTerm = e.target.value;
     this.files = [];
     let searchfilelist = [];
