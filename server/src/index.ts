@@ -99,7 +99,6 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     storage,
     limits: { fileSize: 200 * 1024 * 1024 },
     fileFilter: fileFilter,
-    
   });
 
   router
@@ -282,6 +281,61 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
+  router.route("/search").get(async (req: Request, res) => {
+    try {
+      let keyword: any = req.query.key;
+      let filterCondition = {
+        name: `%${keyword}%`,
+        path: `%${keyword}%`,
+      };
+      let files = await connection
+        .getRepository("image")
+        .createQueryBuilder("image")
+        .select(["image.name", "image.path", "image.alt"])
+        .where(
+          "image.name like :name OR image.path like :path",
+          filterCondition
+        )
+        .getMany();
+      if (files) {
+        files = files
+          .filter((file: any) => {
+            if (fs.existsSync(join(uploadPath, file.path))) {
+              return file;
+            }
+          })
+          .map(async (file: any, index: any) => {
+            const absPath = join(uploadPath, file.path);
+            const filestats = fs.statSync(absPath);
+            const fileType = await mime.getType(absPath);
+            let imageMeta: any = { width: -1, height: -1 };
+
+            if (fileType.split("/")[0] !== "video") {
+              const image = sharp(absPath);
+              imageMeta = await image.metadata();
+            }
+            return {
+              name: file.name,
+              path: absPath
+                .replace(uploadPath, "")
+                .replace(file.name, encodeURIComponent(file.name)),
+              size: filestats.size,
+              modified: filestats.mtime,
+              width: imageMeta.width,
+              height: imageMeta.height,
+              description: file.alt,
+              type: fileType?.split("/")[0],
+            };
+          });
+      }
+      const data = await Promise.all(files);
+      res.json({ data });
+    } catch (err) {
+      res.send(err);
+      console.error(err);
+    }
+  });
+
   router
     .route("/file")
     .post(
@@ -325,8 +379,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
           return {
             ...file,
-         
-            path: absPath.replace(uploadPath, "").replace(file.name, encodeURIComponent(file.name)),
+
+            path: absPath
+              .replace(uploadPath, "")
+              .replace(file.name, encodeURIComponent(file.name)),
             size: filestats.size,
             modified: filestats.mtime,
             width: imageMeta.width,

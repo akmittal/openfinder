@@ -120,6 +120,57 @@ function bootstrap(connection, uploadPath) {
         fs_1.default.renameSync(resolvedSource, resolvedTarget);
         res.json({ msg: "done" });
     });
+    router.route("/search").get(async (req, res) => {
+        try {
+            let keyword = req.query.key;
+            let filterCondition = {
+                name: `%${keyword}%`,
+                path: `%${keyword}%`,
+            };
+            let files = await connection
+                .getRepository("image")
+                .createQueryBuilder("image")
+                .select(["image.name", "image.path", "image.alt"])
+                .where("image.name like :name OR image.path like :path", filterCondition)
+                .getMany();
+            if (files) {
+                files = files
+                    .filter((file) => {
+                    if (fs_1.default.existsSync(path_1.join(uploadPath, file.path))) {
+                        return file;
+                    }
+                })
+                    .map(async (file, index) => {
+                    const absPath = path_1.join(uploadPath, file.path);
+                    const filestats = fs_1.default.statSync(absPath);
+                    const fileType = await mime_1.default.getType(absPath);
+                    let imageMeta = { width: -1, height: -1 };
+                    if (fileType.split("/")[0] !== "video") {
+                        const image = sharp_1.default(absPath);
+                        imageMeta = await image.metadata();
+                    }
+                    return {
+                        name: file.name,
+                        path: absPath
+                            .replace(uploadPath, "")
+                            .replace(file.name, encodeURIComponent(file.name)),
+                        size: filestats.size,
+                        modified: filestats.mtime,
+                        width: imageMeta.width,
+                        height: imageMeta.height,
+                        description: file.alt,
+                        type: fileType === null || fileType === void 0 ? void 0 : fileType.split("/")[0],
+                    };
+                });
+            }
+            const data = await Promise.all(files);
+            res.json({ data });
+        }
+        catch (err) {
+            res.send(err);
+            console.error(err);
+        }
+    });
     router
         .route("/file")
         .post(upload.single("file"), async (req, res) => {
