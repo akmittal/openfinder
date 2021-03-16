@@ -23,25 +23,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.bootstrap = void 0;
-const express_1 = require("express");
+const express_1 = __importStar(require("express"));
 const multer_1 = __importDefault(require("multer"));
 const fs_1 = __importStar(require("fs"));
 const path_1 = require("path");
 const cors_1 = __importDefault(require("cors"));
 const sharp_1 = __importDefault(require("sharp"));
+const typeorm_1 = require("typeorm");
 const mime_1 = __importDefault(require("mime"));
 const compress_1 = require("./util/compress");
-// const app = express()
-// createConnection().then((connection) => {
-//   app.use("/", bootstrap(connection, resolve("./uploads")))
-//   app.listen(5000, () => {
-//     console.log("started")
-//   })
-// })
+const app = express_1.default();
+typeorm_1.createConnection().then((connection) => {
+    app.use("/", bootstrap(connection, path_1.resolve("./uploads")));
+    app.listen(5000, () => {
+        console.log("started");
+    });
+});
 function bootstrap(connection, uploadPath) {
     const router = express_1.Router();
     router.use(cors_1.default());
-    const checkMimeList = ['video', 'image'];
+    const checkMimeList = ["video", "image"];
     function removeExtension(filename) {
         return filename.split(".").slice(0, -1).join(".");
     }
@@ -54,7 +55,7 @@ function bootstrap(connection, uploadPath) {
     const getFiles = (source) => fs_1.readdirSync(source, { withFileTypes: true }).filter((dirent) => {
         var _a;
         return !dirent.isDirectory() &&
-            checkMimeList.includes((_a = mime_1.default.getType(path_1.join(source, dirent.name))) === null || _a === void 0 ? void 0 : _a.split('/')[0]);
+            checkMimeList.includes((_a = mime_1.default.getType(path_1.join(source, dirent.name))) === null || _a === void 0 ? void 0 : _a.split("/")[0]);
     });
     router.use(express_1.json());
     router.use(express_1.urlencoded({ extended: true }));
@@ -156,6 +157,151 @@ function bootstrap(connection, uploadPath) {
             });
         }
         catch (err) {
+            res.status(500).send(err);
+            console.error(err);
+        }
+    });
+    router.route("/delete").post(async (req, res) => {
+        let { context, filename, filePath } = req.body;
+        try {
+            const resolvedSource = path_1.join(uploadPath, context, filename);
+            fs_1.default.unlinkSync(resolvedSource);
+            await connection
+                .getRepository("image")
+                .createQueryBuilder()
+                .delete()
+                .where("path=:path", { path: filePath })
+                .execute();
+            res.json({ msg: "done" });
+        }
+        catch (e) {
+            console.log("Error in Delete Operation", e);
+            res.status(500).send(e);
+        }
+    });
+    router.route("/move").post(async (req, res) => {
+        let { context, filename, newPath } = req.body;
+        const resolvedSource = path_1.join(uploadPath, context, filename);
+        const resolvedTarget = path_1.join(uploadPath, newPath, filename);
+        try {
+            fs_1.default.renameSync(resolvedSource, resolvedTarget);
+            await connection
+                .getRepository("image")
+                .createQueryBuilder()
+                .update("image")
+                .set({ path: path_1.join(newPath, filename) })
+                .where("path=:path", { path: path_1.join(context, filename) })
+                .execute();
+            res.json({ msg: "done" });
+        }
+        catch (err) {
+            console.log("Error in Move Operation", err);
+            res.status(500).send(err);
+        }
+    });
+    router.route("/renameDirectory").post(async (req, res) => {
+        let { context, newDirname, leafNode } = req.body;
+        const resolvedCurrDir = path_1.join(uploadPath, context);
+        const lastPosition = context.lastIndexOf(leafNode);
+        const newPath = context.substring(0, lastPosition) + newDirname;
+        const resolvedTarget = path_1.join(uploadPath, context.substring(0, lastPosition), newDirname);
+        try {
+            if (fs_1.default.statSync(resolvedCurrDir).isDirectory()) {
+                fs_1.default.renameSync(resolvedCurrDir, resolvedTarget);
+                await connection
+                    .getRepository("image")
+                    .createQueryBuilder()
+                    .update("image")
+                    .set({
+                    path: () => `CONCAT('${newPath}',SUBSTR(path,${context.length + 1},LENGTH(path)) )`,
+                })
+                    .where(`path LIKE :path`, { path: `%${context}%` })
+                    .execute();
+                res.json({ msg: "done" });
+            }
+        }
+        catch (err) {
+            console.error("Error in rename directory operation", err);
+            res.status(500).send(err);
+        }
+    });
+    router.route("/moveDir").post(async (req, res) => {
+        let { context, newPath, currentDir, leafNode } = req.body;
+        const resolvedCurrDir = path_1.join(uploadPath, currentDir);
+        let lastIndexNode = currentDir.lastIndexOf(leafNode);
+        const sublastnode = currentDir.substring(lastIndexNode - 1, currentDir.length);
+        if (newPath === "/") {
+            newPath = "";
+        }
+        const resolvedTarget = path_1.join(uploadPath, newPath, sublastnode);
+        try {
+            if (fs_1.default.statSync(resolvedCurrDir).isDirectory()) {
+                fs_1.default.renameSync(resolvedCurrDir, resolvedTarget);
+                await connection
+                    .getRepository("image")
+                    .createQueryBuilder()
+                    .update("image")
+                    .set({
+                    path: () => `CONCAT('${newPath}',SUBSTR(path,${lastIndexNode},LENGTH(path)) )`,
+                })
+                    .where(`path LIKE :path`, { path: `%${currentDir}%` })
+                    .execute();
+                res.json({ msg: "done" });
+            }
+        }
+        catch (err) {
+            console.error("Error in move directory operation", err);
+            res.status(500).send(err);
+        }
+    });
+    router.route("/search").get(async (req, res) => {
+        try {
+            let keyword = req.query.key;
+            let filterCondition = {
+                name: `%${keyword}%`,
+                path: `%${keyword}%`,
+            };
+            let files = await connection
+                .getRepository("image")
+                .createQueryBuilder("image")
+                .select(["image.name", "image.path", "image.alt"])
+                .where("image.name like :name OR image.path like :path", filterCondition)
+                .getMany();
+            if (files) {
+                files = files
+                    .filter((file) => {
+                    if (fs_1.default.existsSync(path_1.join(uploadPath, file.path))) {
+                        return file;
+                    }
+                })
+                    .map(async (file, index) => {
+                    const absPath = path_1.join(uploadPath, file.path);
+                    const filestats = fs_1.default.statSync(absPath);
+                    const fileType = await mime_1.default.getType(absPath);
+                    let imageMeta = { width: -1, height: -1 };
+                    if (fileType.split("/")[0] !== "video") {
+                        const image = sharp_1.default(absPath);
+                        imageMeta = await image.metadata();
+                    }
+                    return {
+                        name: file.name,
+                        path: absPath
+                            .replace(uploadPath, "")
+                            .replace(file.name, encodeURIComponent(file.name)),
+                        size: filestats.size,
+                        modified: filestats.mtime,
+                        width: imageMeta.width,
+                        height: imageMeta.height,
+                        description: file.alt,
+                        type: fileType === null || fileType === void 0 ? void 0 : fileType.split("/")[0],
+                    };
+                });
+            }
+            const data = await Promise.all(files);
+            res.json({ data });
+        }
+        catch (err) {
+            res.send(err);
             console.error(err);
         }
     });
@@ -187,7 +333,7 @@ function bootstrap(connection, uploadPath) {
                 const fileType = await mime_1.default.getType(absPath);
                 let imageMeta = { width: -1, height: -1 };
                 try {
-                    if (fileType.split('/')[0] !== 'video') {
+                    if (fileType.split("/")[0] !== "video") {
                         const image = sharp_1.default(absPath);
                         imageMeta = await image.metadata();
                     }
@@ -196,7 +342,9 @@ function bootstrap(connection, uploadPath) {
                     console.error(e);
                 }
                 const xmp = await readDescription(absPath.replace(uploadPath, ""));
-                return Object.assign(Object.assign({}, file), { path: absPath.replace(uploadPath, "").replace(file.name, encodeURIComponent(file.name)), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split('/')[0] });
+                return Object.assign(Object.assign({}, file), { path: absPath
+                        .replace(uploadPath, "")
+                        .replace(file.name, encodeURIComponent(file.name)), size: filestats.size, modified: filestats.mtime, width: imageMeta.width, height: imageMeta.height, description: xmp, type: fileType === null || fileType === void 0 ? void 0 : fileType.split("/")[0] });
             });
             const data = await Promise.all(files);
             res.json({ data });

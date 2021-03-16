@@ -6,6 +6,8 @@ import './components/InputModal';
 import './components/LoadingSpinner';
 import './components/Settings';
 import './components/InputModalUploadImage';
+import './components/SearchContent';
+import './components/alertDialog';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 
@@ -17,11 +19,10 @@ import '@polymer/iron-icons/iron-icons';
 
 
 export class FileManager extends LitElement {
-  @query('.app-layout') appShownElem:any;
-
   @query('input-modal') inputModal: any;
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
+  @query('queue-dialog') queueDialog: any;
   @property({ type: String }) serverURL: string = '';
 
   @property({ type: String }) sortColumn: string = 'name';
@@ -29,6 +30,10 @@ export class FileManager extends LitElement {
   @property({ type: String }) inputModalType: string = '';
   @property({ type: Boolean }) inputModalState: boolean = false;
   @property({ type: Boolean }) uploadModalState: boolean = false;
+  @property({ type: Boolean }) alertDialogState: boolean = false;
+  @property({ type: String }) alertmessage = '';
+  @property({ type: String }) OprType = '';
+  @property({ type: String }) renameDirKey = '';
   @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Boolean }) showsubmit: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
@@ -37,14 +42,21 @@ export class FileManager extends LitElement {
   @property({ type: Boolean }) showSettings: boolean = false;
   @property({ type: Object }) context: any = { path: '/' };
   @property({ type: Object }) activeItem: any = null;
+  @property({ type: Object }) searchActiveItem: any = null;
   @property({ type: String }) currentContext = 'dir';
   @property({ type: String }) searchTerm = '';
   @property({ type: Boolean }) isLoading: boolean = false;
+  __draggingElement: any;
+  __movedlocation: any = {};
+
   toggleInputModal() {
     this.inputModalState = !this.inputModalState;
   }
   toggleUploadModal() {
     this.uploadModalState = !this.uploadModalState;
+  }
+  toggleQueueDialog() {
+    this.alertDialogState = !this.alertDialogState;
   }
   onFileUpload = (evt: CustomEvent) => {
     const items = this.vaadinUpload.files.map((file: any) => !file.complete);
@@ -54,15 +66,12 @@ export class FileManager extends LitElement {
     }
   };
 
-  
-
   attributeChangedCallback(name: string, oldval: any, newval: any) {
     console.log('attribute change: ', name, newval);
     super.attributeChangedCallback(name, oldval, newval);
     if (name === 'appshown' && newval === 'true') {
       this.getFiles(this.context.path);
     }
-    
   }
   async reloadFiles() {
     this.getFiles(this.context.path);
@@ -129,6 +138,14 @@ export class FileManager extends LitElement {
       background-color: var(--lumo-base-color);
     }
     .image-wrapper {
+      display: flex;
+      justify-content: center;
+
+      flex-direction: row;
+      flex-wrap: wrap;
+      overflow-y: scroll;
+    }
+    .search-wrapper {
       display: flex;
       justify-content: center;
 
@@ -250,14 +267,70 @@ export class FileManager extends LitElement {
       url = `${this.serverURL}/rename`;
     }
 
+    return this.fetchContent(url, body);
+  };
+
+  renameDirectory = (data: any) => {
+    let url = `${this.serverURL}/renameDirectory`;
+    let body = {
+      context: this.context.path,
+      leafNode: this.context.name,
+      newDirname: data,
+    };
+    return this.fetchContent(url, body);
+  };
+
+  fetchContent = (url: any, opts: any) => {
     return fetch(url, {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(opts),
       headers: { 'content-type': 'application/json' },
     });
   };
-  handleSearch = (e: any) => {
+  delete = async (e: any) => {
+    const url = `${this.serverURL}/delete`;
+    let body = {
+      filename: this.activeItem.name,
+      context: this.context.path,
+      filePath: this.activeItem.path,
+    };
+    return this.fetchContent(url, body);
+  };
+
+  moveImage() {
+    const url = `${this.serverURL}/move`;
+    let body = {
+      filename: this.activeItem.name,
+      context: this.context.path,
+      newPath: this.__movedlocation.dropTargetItem.path,
+    };
+    return this.fetchContent(url, body);
+  }
+
+  moveDirectory() {
+    const url = `${this.serverURL}/moveDir`;
+    let body = {
+      context: this.context.path,
+      currentDir: this.__draggingElement.path,
+      leafNode: this.__draggingElement.name,
+      newPath: this.__movedlocation.dropTargetItem.path,
+    };
+    return this.fetchContent(url, body);
+  }
+  handleSearch = async(e: any) => {
     this.searchTerm = e.target.value;
+    this.files = [];
+    let searchfilelist = [];
+    if (this.searchTerm.length > 0) {
+      searchfilelist = (
+        await (
+          await fetch(`${this.serverURL}/search?key=${this.searchTerm}`)
+        ).json()
+      ).data;
+      this.files = searchfilelist;
+    } else {
+      this.files = [];
+    }
   };
   handleFileAction = (e: CustomEvent) => {
     switch (e.detail) {
@@ -266,6 +339,10 @@ export class FileManager extends LitElement {
         this.toggleInputModal();
         break;
       case 'rename':
+        this.inputModalType = e.detail;
+        this.toggleInputModal();
+        break;
+      case 'rename-Directory':
         this.inputModalType = e.detail;
         this.toggleInputModal();
         break;
@@ -297,6 +374,7 @@ export class FileManager extends LitElement {
       body: JSON.stringify(body),
     });
   };
+
   handleInoutSelect = async (evt: CustomEvent) => {
     switch (this.inputModalType) {
       case 'new-subfolder':
@@ -310,6 +388,13 @@ export class FileManager extends LitElement {
 
         this.toggleInputModal();
         this.reloadFiles();
+        break;
+      case 'rename-Directory':
+        this.renameDirKey = evt.detail;
+        this.OprType = 'rename-dir';
+        this.alertmessage = `Are you sure want to rename this directory ${this.context.path}`;
+        this.toggleInputModal();
+        this.toggleQueueDialog();
         break;
       case 'replace':
         this.toggleUploadModal();
@@ -361,8 +446,94 @@ export class FileManager extends LitElement {
     
   }
 
+  async handleDialogAction(e: any) {
+    if (e.detail.action === 'confirm') {
+      switch (this.OprType) {
+        case 'delete':
+          await this.delete(e);
+          this.reloadFiles();
+          break;
+        case 'image:Drag':
+          await this.moveImage();
+          this.context = { path: '/' };
+          this.reloadFiles();
+          break;
+        case 'DragDir':
+          await this.moveDirectory();
+          this.directryKey = Math.random();
+          this.context = { path: '/' };
+          this.reloadFiles();
+          break;
+        case 'rename-dir':
+          this.toggleQueueDialog();
+          await this.renameDirectory(this.renameDirKey);
+          this.context = { path: '/' };
+          this.directryKey = Math.random();
+          this.renameDirKey = '';
+          this.reloadFiles();
+      }
+    } else {
+      this.alertDialogState = false;
+    }
+  }
+  handleDialogMessage(e: any) {
+    switch (e.detail.action) {
+      case 'image:Drag':
+        this.alertmessage = `Are you sure want to move this Image ${this.activeItem.name}, 
+        To new location.. ${this.__movedlocation.dropTargetItem.path}`;
+        break;
+      case 'delete':
+        this.alertmessage = `Are you sure want to delete this Image... ${this.activeItem.name}`;
+        break;
+      case 'DragDir':
+        this.alertmessage = `Are you sure want to move this Directory... ${this.__movedlocation.dragData[0].data} to  ${this.__movedlocation.dropTargetItem.path}`;
+    }
+  }
+  handlequeue(e: any) {
+    const { draggedEl, data, action } = e.detail;
+    let draggedElPathLength;
+    let sub;
+    if (draggedEl) {
+      draggedElPathLength = draggedEl.path.length;
+      sub = data.dropTargetItem.path.substring(0, draggedElPathLength);
+    }
+
+    if (
+      draggedEl &&
+      draggedEl.path !== data.dropTargetItem.path &&
+      draggedEl.path !== sub
+    ) {
+      this.OprType = e.detail.action;
+      this.__movedlocation = e.detail.data;
+      this.__draggingElement = draggedEl;
+      this.handleDialogMessage(e);
+      this.toggleQueueDialog();
+      return;
+    }
+    if (
+      action === 'image:Drag' &&
+      data.dropTargetItem.path !== this.context.path
+    ) {
+      this.OprType = e.detail.action;
+      this.__movedlocation = data;
+      this.__draggingElement = this.activeItem;
+      this.handleDialogMessage(e);
+      this.toggleQueueDialog();
+    } else {
+      this.alertmessage = `Please select different location`;
+      this.toggleQueueDialog();
+    }
+  }
+
+  handleDeleteAction(e: any) {
+    this.OprType = e.detail.action;
+    this.handleDialogMessage(e);
+    this.toggleQueueDialog();
+  }
+
   render() {
-    return html`<input-modal
+    return html`
+      <input-modal
         .opened=${this.inputModalState}
         @onsubmit=${this.handleInoutSelect}
       ></input-modal>
@@ -372,6 +543,11 @@ export class FileManager extends LitElement {
         imagePath=${this.activeItem ? this.activeItem.path : ''}
         @onsubmit=${this.handleInoutSelect}
       ></input-modal-upload>
+      <queue-dialog
+        .message=${this.alertmessage ? this.alertmessage : ''}
+        .opened=${this.alertDialogState}
+        @onaction=${this.handleDialogAction}
+      ></queue-dialog>
       <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
         <of-settings
           .show=${this.showSettings}
@@ -384,6 +560,8 @@ export class FileManager extends LitElement {
           <file-actions
             selectedItemType=${this.activeItem ? this.activeItem.type : ''}
             context=${this.currentContext}
+            .search=${this.searchTerm}
+            .currentPath=${this.context.path}
             @onaction=${this.handleFileAction}
           ></file-actions>
           <div class="padding-x">
@@ -420,46 +598,69 @@ export class FileManager extends LitElement {
           >
           </vaadin-upload>
 
-          <div class="image-wrapper">
-            ${this.getSortedFiles().length === 0
-              ? html`<h4>No files Found</h4>`
-              : html``}
-            ${this.getSortedFiles()
-              .filter(file => {
-                if (!this.searchTerm) {
-                  return true;
-                } else {
-                  return file.name
-                    .toLowerCase()
-                    .includes(this.searchTerm.toLowerCase());
-                }
-              })
-              .map(
-                file =>
-                  html`<file-card
-                    style=${`width:${this.thumbsize}em`}
-                    .serverURL=${this.serverURL}
-                    .data=${file}
-                    @dblclick=${
-                      this.handleSubmit}
-                    @click=${() => this.changeFileContext(file)}
-                    .selected=${this.activeItem === file}
-                  ></file-card>`
-              )}
+          ${this.searchTerm.length === 0
+            ? html` <div class="image-wrapper">
+                ${this.getSortedFiles().length === 0
+                  ? html`<h4>No files Found</h4>`
+                  : html``}
+                ${this.getSortedFiles().map(
+                  file =>
+                    html`<file-card
+                      style=${`width:${this.thumbsize}em`}
+                      .serverURL=${this.serverURL}
+                      .data=${file}
+                      @dblclick=${(e: Event) => {
+                        this.handleSubmit(e);
+                      }}
+                      @click=${(e: any) => {
+                        this.activeItem = file;
+                        this.currentContext = 'file';
+                      }}
+                      @drag=${(e: any) => {
+                        e.preventDefault();
+                        this.activeItem = file;
+                      }}
+                      @ondelete=${(e: any) => {
+                        this.activeItem = file;
+                        this.handleDeleteAction(e);
+                      }}
+                      .selected=${this.activeItem === file}
+                    ></file-card>`
+                )}
+              </div>`
+            : html`
+          <div class="search-wrapper">
+            ${
+              this.files.length === 0
+                ? html`<h4>No files Found</h4>`
+                : html`
+                    <search-content
+                      .serverURL=${this.serverURL}
+                      .files=${this.files}
+                      .sortColumn=${this.sortColumn}
+                      .sortFile=${this.getSortedFiles}
+                      .isAscending=${this.isAscending}
+                      .thumbsize=${this.thumbsize}
+                    ></search-content>
+                  `
+            }
           </div>
         </div>
+        `}
 
-        <section class=${`selection ${!this.showsubmit ? 'hidden' : ''}`}>
-          <section>
-            <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
-            <vaadin-button
-              theme="primary"
-              @click=${this.handleSubmit}
-              .disabled=${!this.activeItem}
-              >Submit</vaadin-button
-            >
+          <section class=${`selection ${!this.showsubmit ? 'hidden' : ''}`}>
+            <section>
+              <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
+              <vaadin-button
+                theme="primary"
+                @click=${this.handleSubmit}
+                .disabled=${!this.activeItem}
+                >Submit</vaadin-button
+              >
+            </section>
           </section>
-        </section>
-      </div> `;
+        </div>
+      </div>
+    `;
   }
 }

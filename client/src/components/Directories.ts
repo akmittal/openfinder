@@ -14,6 +14,8 @@ export class Directories extends LitElement {
   @property({ type: String }) serverURL: string = '';
   @property({ type: Number, attribute: true }) changed: number = 0;
   @query('vaadin-grid') grid: any;
+  __draggingElement: any;
+
   static styles = css`
     :host {
       height: 100vh;
@@ -22,7 +24,35 @@ export class Directories extends LitElement {
     ::part(cell) {
       background-color: transparent;
     }
+    vaadin-grid-cell-content[active] {
+      border: 2px solid red;
+      -webkit-user-drag: element;
+    }
+    vaadin-grid-cell-content{
+      -webkit-user-drag: element;
+    }
   `;
+
+  handleDrop = async (e: any) => {
+    e.preventDefault();
+    const dropTarget = e.detail.dragData ? e.detail.dragData[0] : [];
+    let droptAction;
+    if (dropTarget.type === 'text/uri-list') {
+      droptAction = 'image:Drag';
+    } else {
+      droptAction = 'DragDir';
+    }
+    const ev = new CustomEvent('onqueueaction', {
+      detail: {
+        data: e.detail,
+        action: droptAction,
+        draggedEl: this.__draggingElement,
+      },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(ev);
+  };
   attributeChangedCallback(name: string, old: any, newVal: any) {
     super.attributeChangedCallback(name, old, newVal);
 
@@ -52,7 +82,7 @@ export class Directories extends LitElement {
         },
       ];
     } else {
-      data = await this.getDirs(`/${item.parentItem.name}`);
+      data = await this.getDirs(`/${item.parentItem.path}`);
       data = data.data.map((dir: any) => ({
         ...dir,
         children: dir.isLeafNode ? null : [],
@@ -71,6 +101,9 @@ export class Directories extends LitElement {
     this.grid.selectedItems = this.grid.selectedItems[0] === item ? [] : [item];
     this.dispatchEvent(event);
   };
+  handledrag = (e: any) => {
+    this.__draggingElement = e.detail.draggedItems[0];
+  };
   render() {
     return html`<vaadin-grid
       header="Media"
@@ -78,6 +111,10 @@ export class Directories extends LitElement {
       .dataProvider=${this.dataProvider}
       aria-label="directories"
       style="background:transparent; border:0; min-height:calc(100vh - 50px)"
+      drop-mode="between"
+      rows-draggable
+      @grid-drop=${this.handleDrop}
+      @grid-dragstart=${this.handledrag}
     >
       <vaadin-grid-tree-column
         header=""
