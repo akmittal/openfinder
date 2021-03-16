@@ -4,17 +4,17 @@ import { LitElement, html, css, property, customElement } from 'lit-element';
 export class Actions extends LitElement {
   @property({ type: String }) context = 'dir';
   @property({ type: String }) selectedItemType = '';
+  @property({ type: String }) currentpath = '/';
 
   static styles = css`
     :host {
-      width:100%;
+      width: 100%;
       display: inline-block;
     }
-    vaadin-button{
-      border:1px solid #ccc;
-      background-color:#fff;
+    vaadin-button {
+      border: 1px solid #ccc;
+      background-color: #fff;
     }
-    
   `;
 
   render() {
@@ -37,6 +37,14 @@ export class Actions extends LitElement {
           <iron-icon icon="add" slot="prefix"></iron-icon>
           New Subfolder
         </vaadin-button>
+        ${this.context !== 'file'
+          ? this.currentpath !== '/'
+            ? html`<vaadin-button data-action="rename-Directory">
+                <iron-icon icon="find-replace" slot="prefix"></iron-icon>
+                Rename Directory
+              </vaadin-button>`
+            : ''
+          : ''}
         <!-- <vaadin-button data-action="fullscreen">
           <iron-icon icon="fullscreen" slot="prefix"></iron-icon>
           Maximize
