@@ -175,6 +175,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     });
   router.route("/delete").post(async (req: Request, res: Response) => {
     let { context, filename, filePath } = req.body;
+    filePath = decodeURIComponent(filePath);
     try {
       const resolvedSource = join(uploadPath, context, filename);
       fs.unlinkSync(resolvedSource);
