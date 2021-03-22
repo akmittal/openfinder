@@ -462,7 +462,7 @@ export class FileManager extends LitElement {
           break;
         case 'image:Drag':
           await this.moveImage();
-          this.context = { path: '/' };
+          this.context = { path: this.context.path};
           this.reloadFiles();
           break;
         case 'DragDir':
