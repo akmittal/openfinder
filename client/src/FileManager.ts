@@ -81,7 +81,11 @@ export class FileManager extends LitElement {
     }
   }
   async reloadFiles() {
-    this.getFiles(this.context.path);
+    if (this.searchTerm.length > 0) {
+      this.handleSearch(this.searchTerm);
+    } else {
+      this.getFiles(this.context.path);
+    }
   }
 
   async getFiles(context: string) {
@@ -297,7 +301,6 @@ export class FileManager extends LitElement {
   delete = async (e: any) => {
     const url = `${this.serverURL}/delete`;
     let body = {
-      filename: this.activeItem.name,
       context: this.context.path,
       filePath: this.activeItem.path,
     };
@@ -325,7 +328,7 @@ export class FileManager extends LitElement {
     return this.fetchContent(url, body);
   }
   handleSearch = async (e: any) => {
-    this.searchTerm = e.target.value;
+    this.searchTerm = e.target ? e.target.value: e;
     this.files = [];
     let searchfilelist = [];
     if (this.searchTerm.length > 0) {
@@ -648,6 +651,10 @@ export class FileManager extends LitElement {
                       .sortFile=${this.getSortedFiles}
                       .isAscending=${this.isAscending}
                       .thumbsize=${this.thumbsize}
+                      @ondelete=${(e: any) => {
+                        this.activeItem = e.detail.file;
+                        this.handleDeleteAction(e);
+                      }}
                     ></search-content>
                   `
             }
