@@ -15,6 +15,7 @@ import sharp from "sharp";
 import { Connection, createConnection } from "typeorm";
 import mime from "mime";
 import { CompressImage } from "./util/compress";
+import { spawnSync } from "child_process";
 
 // const app = express();
 // createConnection().then((connection) => {
@@ -169,7 +170,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           }
         });
       } catch (err) {
-        res.status(500).send(err);
+        res.status(500).send(err.toString());
         console.error(err);
       }
     });
@@ -187,7 +188,36 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       res.json({ msg: "done" });
     } catch (e) {
       console.log("Error in Delete Operation", e);
-      res.status(500).send(e);
+      res.status(500).send(e.toString());
+    }
+  });
+
+  router.route("/deleteDirectory").post(async (req: Request, res: Response) => {
+    let { context } = req.body;
+    const filterCondition = {
+      path: `%${context}%`,
+    };
+    try {
+      const resolvedSource = join(uploadPath, context);
+      const { stderr, stdout, status } = spawnSync('rm', [
+        '-r',
+        resolvedSource,
+      ]);
+      if (status === 0) {
+        await connection
+          .getRepository("image")
+          .createQueryBuilder()
+          .delete()
+          .where("path like :path", filterCondition)
+          .execute();
+        res.json({ msg: "deleted directory" });
+      }
+      if (status !== 0) {
+        throw new Error(stderr);
+      }
+    } catch (e) {
+      console.error('Error in Delete Directory Operatio', e);
+      res.status(500).send(e.toString());
     }
   });
 
@@ -207,7 +237,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       res.json({ msg: "done" });
     } catch (err) {
       console.log("Error in Move Operation", err);
-      res.status(500).send(err);
+      res.status(500).send(err.toString());
     }
   });
 
@@ -243,7 +273,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       }
     } catch (err) {
       console.error("Error in rename directory operation", err);
-      res.status(500).send(err);
+      res.status(500).send(err.toString());
     }
   });
 

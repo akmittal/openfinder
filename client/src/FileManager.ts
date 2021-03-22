@@ -304,6 +304,14 @@ export class FileManager extends LitElement {
     return this.fetchContent(url, body);
   };
 
+  deleteDirectory = async()=> {
+    const url = `${this.serverURL}/deleteDirectory`;
+    let body = {
+      context: this.context.path,
+    };
+    return this.fetchContent(url, body);
+  }
+
   moveImage() {
     const url = `${this.serverURL}/move`;
     let body = {
@@ -352,6 +360,11 @@ export class FileManager extends LitElement {
       case 'rename-Directory':
         this.inputModalType = e.detail;
         this.toggleInputModal();
+        break;
+      case 'delete-Directory':
+        this.OprType = 'delete-dir';
+        this.alertmessage = `Are you sure want to delete this directory ${this.context.path}`;
+        this.toggleQueueDialog();
         break;
       case 'replace':
         this.inputModalType = e.detail;
@@ -459,17 +472,20 @@ export class FileManager extends LitElement {
         case 'delete':
           await this.delete(e);
           this.reloadFiles();
+          this.OprType = '';
           break;
         case 'image:Drag':
           await this.moveImage();
           this.context = { path: '/' };
           this.reloadFiles();
+          this.OprType = '';
           break;
         case 'DragDir':
           await this.moveDirectory();
           this.directryKey = Math.random();
           this.context = { path: '/' };
           this.reloadFiles();
+          this.OprType = '';
           break;
         case 'rename-dir':
           this.toggleQueueDialog();
@@ -477,7 +493,17 @@ export class FileManager extends LitElement {
           this.context = { path: '/' };
           this.directryKey = Math.random();
           this.renameDirKey = '';
+          this.OprType = '';
           this.reloadFiles();
+          break;
+        case 'delete-dir':
+          this.toggleQueueDialog();
+          await this.deleteDirectory();
+          this.context = { path: '/' };
+          this.OprType = '';
+          this.directryKey = Math.random();
+          this.reloadFiles();
+          break;
       }
     } else {
       this.alertDialogState = false;
@@ -567,8 +593,7 @@ export class FileManager extends LitElement {
           <file-actions
             selectedItemType=${this.activeItem ? this.activeItem.type : ''}
             context=${this.currentContext}
-            .search=${this.searchTerm}
-            .currentPath=${this.context.path}
+            currentPath=${this.context.path}
             @onaction=${this.handleFileAction}
           ></file-actions>
           <div class="padding-x">
