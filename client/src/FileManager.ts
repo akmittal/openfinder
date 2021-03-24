@@ -472,16 +472,15 @@ export class FileManager extends LitElement {
           this.reloadFiles();
           break;
         case 'rename-dir':
-          this.toggleQueueDialog();
           await this.renameDirectory(this.renameDirKey);
           this.context = { path: '/' };
           this.directryKey = Math.random();
           this.renameDirKey = '';
           this.reloadFiles();
+          break;
       }
-    } else {
-      this.alertDialogState = false;
     }
+    this.toggleQueueDialog();
   }
   handleDialogMessage(e: any) {
     switch (e.detail.action) {
