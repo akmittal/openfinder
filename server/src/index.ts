@@ -17,13 +17,13 @@ import mime from "mime";
 import { CompressImage } from "./util/compress";
 import { spawnSync } from "child_process";
 
-// const app = express();
-// createConnection().then((connection) => {
-//   app.use("/", bootstrap(connection, resolve("./uploads")));
-//   app.listen(5000, () => {
-//     console.log("started");
-//   });
-// });
+const app = express();
+createConnection().then((connection) => {
+  app.use("/", bootstrap(connection, resolve("./uploads")));
+  app.listen(5000, () => {
+    console.log("started");
+  });
+});
 
 export function bootstrap(connection: Connection, uploadPath: string): Router {
   const router = Router();
@@ -107,8 +107,13 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     .post((req: Request, res: Response) => {
       const { context, dir } = req.body;
       const resolvedPath = join(uploadPath, context, dir);
-      fs.mkdirSync(resolvedPath);
-      res.json({ msg: "hello" });
+      if (!fs.existsSync(resolvedPath)) {
+        fs.mkdirSync(resolvedPath);
+        return res.json({ msg: "directory created successfully" });
+      }
+      res.statusMessage = 'Directory already exit';
+      return res.status(500).send('file already exits')
+     
     })
     .get((req: Request, res: Response) => {
       const context: any = req.query.context;
@@ -126,6 +131,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
   router.route("/rename").post(async (req: Request, res: Response) => {
     let { context, filename, newFilename, filePath } = req.body;
+    filePath = decodeURIComponent(filePath);
     try {
       if (!newFilename.includes(".")) {
         newFilename = `${newFilename}${extname(filename)}`;
@@ -143,6 +149,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       res.json({ msg: "done" });
     } catch (e) {
       console.log("Error in Rename op", e);
+      res.status(500).send(e.toString());
     }
   });
   // another multer instance for file replace
@@ -192,10 +199,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
-  router.route("/deleteDirectory").post(async (req: Request, res: Response) => {
+  router.route("/delete/directory").post(async (req: Request, res: Response) => {
     let { context } = req.body;
     const filterCondition = {
-      path: `%${context}%`,
+      path: `${context}%`,
     };
     try {
       const resolvedSource = join(uploadPath, context);
@@ -213,15 +220,16 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
         res.json({ msg: "deleted directory" });
       }
       if (status !== 0) {
-        throw new Error(stderr);
+        throw new Error('No such file or directory exit');
       }
     } catch (e) {
-      console.error('Error in Delete Directory Operatio', e);
-      res.status(500).send(e.toString());
+      console.error('Error in Delete Directory Operation', e);
+      res.statusMessage = e
+      res.status(500).send(e);
     }
   });
 
-  router.route("/move").post(async (req: Request, res: Response) => {
+  router.route("/move/image").post(async (req: Request, res: Response) => {
     let { context, filename, newPath } = req.body;
     const resolvedSource = join(uploadPath, context, filename);
     const resolvedTarget = join(uploadPath, newPath, filename);
@@ -241,7 +249,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
-  router.route("/renameDirectory").post(async (req: Request, res: Response) => {
+  router.route("/rename/directory").post(async (req: Request, res: Response) => {
     let { context, newDirname, leafNode } = req.body;
     const resolvedCurrDir = join(uploadPath, context);
     const lastPosition = context.lastIndexOf(leafNode);
@@ -277,7 +285,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
-  router.route("/moveDir").post(async (req: Request, res: Response) => {
+  router.route("/move/directory").post(async (req: Request, res: Response) => {
     let { context, newPath, currentDir, leafNode } = req.body;
     const resolvedCurrDir = join(uploadPath, currentDir);
     let lastIndexNode = currentDir.lastIndexOf(leafNode);
@@ -301,11 +309,17 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
             path: () =>
               `CONCAT('${newPath}',SUBSTR(path,${lastIndexNode},LENGTH(path)) )`,
           })
-          .where(`path LIKE :path`, { path: `%${currentDir}%` })
+          .where(`path LIKE :path`, { path: `${currentDir}%` })
           .execute();
         res.json({ msg: "done" });
       }
     } catch (err) {
+      if(err.errno === -2) {
+        res.statusMessage ='No such file or directory exit'
+      }
+      if(err.errno === -66) {
+        res.statusMessage ='Directory already exit and contains data'
+      }
       console.error("Error in move directory operation", err);
       res.status(500).send(err);
     }

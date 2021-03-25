@@ -10,6 +10,7 @@ import './components/SearchContent';
 import './components/alertDialog';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
+import '@vaadin/vaadin-notification';
 
 import '@vaadin/vaadin-upload';
 import '@vaadin/vaadin-grid';
@@ -17,9 +18,9 @@ import '@vaadin/vaadin-grid/vaadin-grid-tree-column';
 import '@polymer/iron-icon/iron-icon';
 import '@polymer/iron-icons/iron-icons';
 
-
 export class FileManager extends LitElement {
   @query('input-modal') inputModal: any;
+  @query('vaadin-notification') notification: any;
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
   @query('queue-dialog') queueDialog: any;
@@ -212,7 +213,6 @@ export class FileManager extends LitElement {
       align-items: center;
       width: 100%;
     }
-
     .setting-container {
       display: flex;
       padding: 10px 10px;
@@ -245,16 +245,12 @@ export class FileManager extends LitElement {
 
   async createNewSubFolder(folderName: string) {
     // console.log('a', this.context);
-    return fetch(`${this.serverURL}/directory`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        context: this.context.path,
-        dir: folderName,
-      }),
-    });
+    const url = `${this.serverURL}/directory`;
+    const body = {
+      context: this.context.path,
+      dir: folderName,
+    };
+    return this.fetchContent(url, body);
   }
   toggleSettings = () => {
     this.showSettings = !this.showSettings;
@@ -278,7 +274,7 @@ export class FileManager extends LitElement {
   };
 
   renameDirectory = (data: any) => {
-    let url = `${this.serverURL}/renameDirectory`;
+    let url = `${this.serverURL}/rename/directory`;
     let body = {
       context: this.context.path,
       leafNode: this.context.name,
@@ -291,9 +287,40 @@ export class FileManager extends LitElement {
     return fetch(url, {
       method: 'POST',
       body: JSON.stringify(opts),
-      headers: { 'content-type': 'application/json' },
-    });
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+      .then(res => {
+        if (res.ok) {
+          return res.json();
+        } else {
+          throw res;
+        }
+      })
+      .catch((err: any) => {
+        this.handleNotificationPopup(err);
+      });
   };
+
+  handleNotificationPopup = (err: any) => {
+    this.notification.renderer = function (root: any) {
+      const container = window.document.createElement('div');
+      const boldText = window.document.createElement('b');
+      boldText.textContent = 'Error';
+
+      const br = window.document.createElement('br');
+      const plainText = window.document.createTextNode(err.statusText);
+
+      container.appendChild(boldText);
+      container.appendChild(br);
+      container.appendChild(plainText);
+
+      root.appendChild(container);
+    };
+    this.notification.open();
+  };
+
   delete = async (e: any) => {
     const url = `${this.serverURL}/delete`;
     let body = {
@@ -304,16 +331,16 @@ export class FileManager extends LitElement {
     return this.fetchContent(url, body);
   };
 
-  deleteDirectory = async()=> {
-    const url = `${this.serverURL}/deleteDirectory`;
+  deleteDirectory = async () => {
+    const url = `${this.serverURL}/delete/directory`;
     let body = {
       context: this.context.path,
     };
     return this.fetchContent(url, body);
-  }
+  };
 
   moveImage() {
-    const url = `${this.serverURL}/move`;
+    const url = `${this.serverURL}/move/image`;
     let body = {
       filename: this.activeItem.name,
       context: this.context.path,
@@ -323,7 +350,7 @@ export class FileManager extends LitElement {
   }
 
   moveDirectory() {
-    const url = `${this.serverURL}/moveDir`;
+    const url = `${this.serverURL}/move/directory`;
     let body = {
       context: this.context.path,
       currentDir: this.__draggingElement.path,
@@ -459,12 +486,10 @@ export class FileManager extends LitElement {
   handleThumbChange = (e: CustomEvent) => {
     this.thumbsize = e.detail;
   };
-  changeFileContext =(file:any) =>{
-   
-      this.activeItem = file;
-      this.currentContext = 'file';
-    
-  }
+  changeFileContext = (file: any) => {
+    this.activeItem = file;
+    this.currentContext = 'file';
+  };
 
   async handleDialogAction(e: any) {
     if (e.detail.action === 'confirm') {
@@ -581,6 +606,8 @@ export class FileManager extends LitElement {
         .opened=${this.alertDialogState}
         @onaction=${this.handleDialogAction}
       ></queue-dialog>
+      <vaadin-notification .duration="4000" position="bottom-center">
+      </vaadin-notification>
       <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
         <of-settings
           .show=${this.showSettings}
