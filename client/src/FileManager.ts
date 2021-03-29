@@ -292,11 +292,10 @@ export class FileManager extends LitElement {
       },
     })
       .then(res => {
-        if (res.ok) {
-          return res.json();
-        } else {
+        if (!res.ok) {
           throw res;
         }
+        return res.json();
       })
       .catch((err: any) => {
         this.handleNotificationPopup(err);
@@ -389,7 +388,7 @@ export class FileManager extends LitElement {
         this.toggleInputModal();
         break;
       case 'delete-Directory':
-        this.OprType = 'delete-dir';
+        this.OprType = e.detail;
         this.alertmessage = `Are you sure want to delete this directory ${this.context.path}`;
         this.toggleQueueDialog();
         break;
@@ -521,7 +520,7 @@ export class FileManager extends LitElement {
           this.OprType = '';
           this.reloadFiles();
           break;
-        case 'delete-dir':
+        case 'delete-Directory':
           this.toggleQueueDialog();
           await this.deleteDirectory();
           this.context = { path: '/' };

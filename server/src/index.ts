@@ -274,7 +274,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
                 context.length + 1
               },LENGTH(path)) )`,
           })
-          .where(`path LIKE :path`, { path: `%${context}%` })
+          .where(`path LIKE :path`, { path: `${context}%` })
           .execute();
 
         res.json({ msg: "done" });
