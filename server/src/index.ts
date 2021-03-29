@@ -109,11 +109,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       const resolvedPath = join(uploadPath, context, dir);
       if (!fs.existsSync(resolvedPath)) {
         fs.mkdirSync(resolvedPath);
-        return res.json({ msg: "directory created successfully" });
+        return res.json({ msg: 'directory created successfully' });
       }
       res.statusMessage = 'Directory already exit';
-      return res.status(500).send('file already exits')
-     
+      return res.status(500).send('file already exits');
     })
     .get((req: Request, res: Response) => {
       const context: any = req.query.context;
@@ -138,17 +137,22 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       }
       const resolvedSource = join(uploadPath, context, filename);
       const resolvedTarget = join(uploadPath, context, newFilename);
-      fs.renameSync(resolvedSource, resolvedTarget);
-      await connection
-        .getRepository("image")
-        .createQueryBuilder()
-        .update("image")
-        .set({ name: newFilename, path: join(context, newFilename) })
-        .where("path=:path", { path: filePath })
-        .execute();
-      res.json({ msg: "done" });
+      if (!fs.existsSync(resolvedTarget)) {
+        fs.renameSync(resolvedSource, resolvedTarget);
+        await connection
+          .getRepository("image")
+          .createQueryBuilder()
+          .update("image")
+          .set({ name: newFilename, path: join(context, newFilename) })
+          .where("path=:path", { path: filePath })
+          .execute();
+        res.json({ msg: "done" });
+      } else {
+        throw new Error("Image Already exit");
+      }
     } catch (e) {
       console.log("Error in Rename op", e);
+      res.statusMessage = e;
       res.status(500).send(e.toString());
     }
   });
@@ -199,91 +203,103 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
-  router.route("/delete/directory").post(async (req: Request, res: Response) => {
-    let { context } = req.body;
-    const filterCondition = {
-      path: `${context}%`,
-    };
-    try {
-      const resolvedSource = join(uploadPath, context);
-      const { stderr, stdout, status } = spawnSync('rm', [
-        '-r',
-        resolvedSource,
-      ]);
-      if (status === 0) {
-        await connection
-          .getRepository("image")
-          .createQueryBuilder()
-          .delete()
-          .where("path like :path", filterCondition)
-          .execute();
-        res.json({ msg: "deleted directory" });
+  router
+    .route("/delete/directory")
+    .post(async (req: Request, res: Response) => {
+      let { context } = req.body;
+      const filterCondition = {
+        path: `${context}%`,
+      };
+      try {
+        const resolvedSource = join(uploadPath, context);
+        const { stderr, stdout, status } = spawnSync("rm", [
+          "-r",
+          resolvedSource,
+        ]);
+        if (status === 0) {
+          await connection
+            .getRepository("image")
+            .createQueryBuilder()
+            .delete()
+            .where("path like :path", filterCondition)
+            .execute();
+          res.json({ msg: "directory deleted successfully" });
+        }
+        if (status !== 0) {
+          throw new Error('No such file or directory exit');
+        }
+      } catch (e) {
+        console.error('Error in Delete Directory Operation', e);
+        res.statusMessage = e;
+        res.status(500).send(e);
       }
-      if (status !== 0) {
-        throw new Error('No such file or directory exit');
-      }
-    } catch (e) {
-      console.error('Error in Delete Directory Operation', e);
-      res.statusMessage = e
-      res.status(500).send(e);
-    }
-  });
+    });
 
   router.route("/move/image").post(async (req: Request, res: Response) => {
     let { context, filename, newPath } = req.body;
     const resolvedSource = join(uploadPath, context, filename);
     const resolvedTarget = join(uploadPath, newPath, filename);
     try {
-      fs.renameSync(resolvedSource, resolvedTarget);
-      await connection
-        .getRepository("image")
-        .createQueryBuilder()
-        .update("image")
-        .set({ path: join(newPath, filename) })
-        .where("path=:path", { path: join(context, filename) })
-        .execute();
-      res.json({ msg: "done" });
-    } catch (err) {
-      console.log("Error in Move Operation", err);
-      res.status(500).send(err.toString());
-    }
-  });
-
-  router.route("/rename/directory").post(async (req: Request, res: Response) => {
-    let { context, newDirname, leafNode } = req.body;
-    const resolvedCurrDir = join(uploadPath, context);
-    const lastPosition = context.lastIndexOf(leafNode);
-    const newPath = context.substring(0, lastPosition) + newDirname;
-
-    const resolvedTarget = join(
-      uploadPath,
-      context.substring(0, lastPosition),
-      newDirname
-    );
-    try {
-      if (fs.statSync(resolvedCurrDir).isDirectory()) {
-        fs.renameSync(resolvedCurrDir, resolvedTarget);
-
+      if (!fs.existsSync(resolvedTarget)) {
+        fs.renameSync(resolvedSource, resolvedTarget);
         await connection
           .getRepository("image")
           .createQueryBuilder()
           .update("image")
-          .set({
-            path: () =>
-              `CONCAT('${newPath}',SUBSTR(path,${
-                context.length + 1
-              },LENGTH(path)) )`,
-          })
-          .where(`path LIKE :path`, { path: `${context}%` })
+          .set({ path: join(newPath, filename) })
+          .where("path=:path", { path: join(context, filename) })
           .execute();
-
         res.json({ msg: "done" });
+      } else {
+        throw new Error('Image Already exit');
       }
     } catch (err) {
-      console.error("Error in rename directory operation", err);
+      console.log('Error in Move Operation', err);
+      res.statusMessage = err;
       res.status(500).send(err.toString());
     }
   });
+
+  router
+    .route("/rename/directory")
+    .post(async (req: Request, res: Response) => {
+      let { context, newDirname, leafNode } = req.body;
+      const resolvedCurrDir = join(uploadPath, context);
+      const lastPosition = context.lastIndexOf(leafNode);
+      const newPath = context.substring(0, lastPosition) + newDirname;
+
+      const resolvedTarget = join(
+        uploadPath,
+        context.substring(0, lastPosition),
+        newDirname
+      );
+      try {
+        if (!fs.existsSync(resolvedTarget)) {
+          fs.renameSync(resolvedCurrDir, resolvedTarget);
+
+          await connection
+            .getRepository("image")
+            .createQueryBuilder()
+            .update("image")
+            .set({
+              path: () =>
+                `CONCAT('${newPath}',SUBSTR(path,${
+                  context.length + 1
+                },LENGTH(path)) )`,
+            })
+            .where(`path LIKE :path`, { path: `${context}%` })
+            .execute();
+
+          res.json({ msg: "done" });
+        } else {
+          throw new Error('Directory already exits');
+        }
+      } catch (err) {
+        console.error('Error in rename directory operation', err);
+        res.statusMessage = err;
+        res.status(500).send(err.toString());
+      }
+    });
 
   router.route("/move/directory").post(async (req: Request, res: Response) => {
     let { context, newPath, currentDir, leafNode } = req.body;
@@ -299,7 +315,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     const resolvedTarget = join(uploadPath, newPath, sublastnode);
 
     try {
-      if (fs.statSync(resolvedCurrDir).isDirectory()) {
+      if (!fs.existsSync(resolvedTarget)) {
         fs.renameSync(resolvedCurrDir, resolvedTarget);
         await connection
           .getRepository("image")
@@ -312,15 +328,12 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .where(`path LIKE :path`, { path: `${currentDir}%` })
           .execute();
         res.json({ msg: "done" });
+      } else {
+        throw new Error('Directory already exits');
       }
     } catch (err) {
-      if(err.errno === -2) {
-        res.statusMessage ='No such file or directory exit'
-      }
-      if(err.errno === -66) {
-        res.statusMessage ='Directory already exit and contains data'
-      }
-      console.error("Error in move directory operation", err);
+      console.error('Error in move directory operation', err);
+      res.statusMessage = err;
       res.status(500).send(err);
     }
   });
