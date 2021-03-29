@@ -52,6 +52,7 @@ export class Directories extends LitElement {
       composed: true,
     });
     this.dispatchEvent(ev);
+    this.__draggingElement ='';
   };
   attributeChangedCallback(name: string, old: any, newVal: any) {
     super.attributeChangedCallback(name, old, newVal);
