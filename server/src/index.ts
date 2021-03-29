@@ -155,10 +155,9 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     .post(imgReplaceMulterInst.single("file"), async (req: Request, res) => {
       try {
         let imagePath: any = req.query.path;
+        imagePath = decodeURIComponent(imagePath);
         let file = req.file;
-        const filename = imagePath.replace("/", "");
-
-        const resolvedSource = join(uploadPath, filename);
+        const resolvedSource = join(uploadPath, imagePath);
 
         const outStream = fs.createWriteStream(resolvedSource);
         outStream.write(file.buffer);
@@ -410,7 +409,9 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
-  router.use("/static", staticServer(uploadPath));
+  router.use("/static", staticServer(uploadPath, {
+    cacheControl: false
+  }));
 
   async function readDescription(path: string) {
     const res: any = await connection
