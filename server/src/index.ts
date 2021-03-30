@@ -176,7 +176,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     let { context, filename, filePath } = req.body;
     filePath = decodeURIComponent(filePath);
     try {
-      const resolvedSource = join(uploadPath, context, filename);
+      const resolvedSource = join(uploadPath,filePath);
       fs.unlinkSync(resolvedSource);
       await connection
         .getRepository("image")
