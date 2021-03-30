@@ -23,6 +23,7 @@ export class FileManager extends LitElement {
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
   @query('queue-dialog') queueDialog: any;
+  @query('vaadin-text-field') searchTextField:any;
   @property({ type: String }) serverURL: string = '';
 
   @property({ type: String }) sortColumn: string = 'name';
@@ -81,11 +82,7 @@ export class FileManager extends LitElement {
     }
   }
   async reloadFiles() {
-    if (this.searchTerm.length > 0) {
-      this.handleSearch(this.searchTerm);
-    } else {
-      this.getFiles(this.context.path);
-    }
+    this.getFiles(this.context.path);
   }
 
   async getFiles(context: string) {
@@ -328,18 +325,18 @@ export class FileManager extends LitElement {
     return this.fetchContent(url, body);
   }
   handleSearch = async (e: any) => {
-    this.searchTerm = e.target ? e.target.value: e;
+    this.searchTerm = e.target ? e.target.value : e;
     this.files = [];
-    let searchfilelist = [];
     if (this.searchTerm.length > 0) {
-      searchfilelist = (
+      this.currentContext = 'search'
+      this.files = (
         await (
           await fetch(`${this.serverURL}/search?key=${this.searchTerm}`)
         ).json()
       ).data;
-      this.files = searchfilelist;
     } else {
-      this.files = [];
+      this.reloadFiles();
+      this.currentContext = 'dir'
     }
   };
   handleFileAction = (e: CustomEvent) => {
@@ -449,19 +446,21 @@ export class FileManager extends LitElement {
   handleThumbChange = (e: CustomEvent) => {
     this.thumbsize = e.detail;
   };
-  changeFileContext =(file:any) =>{
-   
-      this.activeItem = file;
-      this.currentContext = 'file';
-    
-  }
+  changeFileContext = (file: any) => {
+    this.activeItem = file;
+    this.currentContext = 'file';
+  };
 
   async handleDialogAction(e: any) {
     if (e.detail.action === 'confirm') {
       switch (this.OprType) {
         case 'delete':
           await this.delete(e);
-          this.reloadFiles();
+          if (this.currentContext === 'search' && this.searchTerm.length > 0) {
+            this.handleSearch(this.searchTerm);
+          } else {
+            this.reloadFiles();
+          }
           break;
         case 'image:Drag':
           await this.moveImage();
@@ -541,6 +540,15 @@ export class FileManager extends LitElement {
     this.toggleQueueDialog();
   }
 
+  handleGalleryDisplay() {
+    const searchLen = this.searchTerm.length;
+    const fileLen = this.files.length;
+    if (searchLen === 0 && fileLen > 0) {
+      return true;
+    }
+    return false;
+  }
+
   render() {
     return html`
       <input-modal
@@ -590,6 +598,13 @@ export class FileManager extends LitElement {
         </div>
 
         <file-directories
+          @click=${(e:any)=> {
+            if(this.searchTerm.length >0 ) {
+              this.searchTextField.value = '';
+              this.searchTerm = '';
+              this.currentContext = 'dir'
+            }
+          }}
           changed=${this.directryKey}
           .serverURL=${this.serverURL}
           class="drawer"
@@ -608,7 +623,7 @@ export class FileManager extends LitElement {
           >
           </vaadin-upload>
 
-          ${this.searchTerm.length === 0
+          ${this.handleGalleryDisplay()
             ? html` <div class="image-wrapper">
                 ${this.getSortedFiles().length === 0
                   ? html`<h4>No files Found</h4>`
