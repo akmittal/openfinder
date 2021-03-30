@@ -63,7 +63,10 @@ export class Card extends LitElement {
       detail: {
         data: e.target.getAttribute('data-action'),
         action: 'delete',
+        file : this.data
       },
+      bubbles: true,
+      composed: true,
     });
     this.dispatchEvent(event);
   }

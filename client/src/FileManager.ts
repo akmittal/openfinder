@@ -24,6 +24,7 @@ export class FileManager extends LitElement {
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
   @query('queue-dialog') queueDialog: any;
+  @query('vaadin-text-field') searchTextField:any;
   @property({ type: String }) serverURL: string = '';
 
   @property({ type: String }) sortColumn: string = 'name';
@@ -323,7 +324,6 @@ export class FileManager extends LitElement {
   delete = async (e: any) => {
     const url = `${this.serverURL}/delete`;
     let body = {
-      filename: this.activeItem.name,
       context: this.context.path,
       filePath: this.activeItem.path,
     };
@@ -359,18 +359,18 @@ export class FileManager extends LitElement {
     return this.fetchContent(url, body);
   }
   handleSearch = async (e: any) => {
-    this.searchTerm = e.target.value;
+    this.searchTerm = e.target ? e.target.value : e;
     this.files = [];
-    let searchfilelist = [];
     if (this.searchTerm.length > 0) {
-      searchfilelist = (
+      this.currentContext = 'search'
+      this.files = (
         await (
           await fetch(`${this.serverURL}/search?key=${this.searchTerm}`)
         ).json()
       ).data;
-      this.files = searchfilelist;
     } else {
-      this.files = [];
+      this.reloadFiles();
+      this.currentContext = 'dir'
     }
   };
   handleFileAction = (e: CustomEvent) => {
@@ -495,43 +495,40 @@ export class FileManager extends LitElement {
       switch (this.OprType) {
         case 'delete':
           await this.delete(e);
-          this.reloadFiles();
-          this.OprType = '';
+          if (this.currentContext === 'search' && this.searchTerm.length > 0) {
+            this.handleSearch(this.searchTerm);
+          } else {
+            this.reloadFiles();
+          }
           break;
         case 'image:Drag':
           await this.moveImage();
-          this.context = { path: '/' };
+          this.context = { path: this.context.path};
           this.reloadFiles();
-          this.OprType = '';
           break;
         case 'DragDir':
           await this.moveDirectory();
           this.directryKey = Math.random();
           this.context = { path: '/' };
           this.reloadFiles();
-          this.OprType = '';
           break;
         case 'rename-dir':
-          this.toggleQueueDialog();
           await this.renameDirectory(this.renameDirKey);
           this.context = { path: '/' };
           this.directryKey = Math.random();
           this.renameDirKey = '';
-          this.OprType = '';
           this.reloadFiles();
           break;
         case 'delete-Directory':
-          this.toggleQueueDialog();
           await this.deleteDirectory();
           this.context = { path: '/' };
-          this.OprType = '';
           this.directryKey = Math.random();
           this.reloadFiles();
           break;
       }
-    } else {
-      this.alertDialogState = false;
     }
+    this.OprType = '';
+    this.toggleQueueDialog();
   }
   handleDialogMessage(e: any) {
     switch (e.detail.action) {
@@ -549,16 +546,18 @@ export class FileManager extends LitElement {
   handlequeue(e: any) {
     const { draggedEl, data, action } = e.detail;
     let draggedElPathLength;
+    let dropElPathLength = data.dropTargetItem.path.length;
     let sub;
     if (draggedEl) {
       draggedElPathLength = draggedEl.path.length;
       sub = data.dropTargetItem.path.substring(0, draggedElPathLength);
     }
-
     if (
       draggedEl &&
       draggedEl.path !== data.dropTargetItem.path &&
-      draggedEl.path !== sub
+      draggedEl.path !== sub &&
+      draggedEl.name !==
+        draggedEl.path.substring(dropElPathLength + 1, draggedElPathLength)
     ) {
       this.OprType = e.detail.action;
       this.__movedlocation = e.detail.data;
@@ -576,9 +575,13 @@ export class FileManager extends LitElement {
       this.__draggingElement = this.activeItem;
       this.handleDialogMessage(e);
       this.toggleQueueDialog();
+      return;
     } else {
       this.alertmessage = `Please select different location`;
       this.toggleQueueDialog();
+      this.__draggingElement = null;
+      this.__movedlocation = null;
+      this.OprType = '';
     }
   }
 
@@ -586,6 +589,15 @@ export class FileManager extends LitElement {
     this.OprType = e.detail.action;
     this.handleDialogMessage(e);
     this.toggleQueueDialog();
+  }
+
+  handleGalleryDisplay() {
+    const searchLen = this.searchTerm.length;
+    const fileLen = this.files.length;
+    if (searchLen === 0 && fileLen > 0) {
+      return true;
+    }
+    return false;
   }
 
   render() {
@@ -638,6 +650,13 @@ export class FileManager extends LitElement {
         </div>
 
         <file-directories
+          @click=${(e:any)=> {
+            if(this.searchTerm.length >0 ) {
+              this.searchTextField.value = '';
+              this.searchTerm = '';
+              this.currentContext = 'dir'
+            }
+          }}
           changed=${this.directryKey}
           .serverURL=${this.serverURL}
           class="drawer"
@@ -656,7 +675,7 @@ export class FileManager extends LitElement {
           >
           </vaadin-upload>
 
-          ${this.searchTerm.length === 0
+          ${this.handleGalleryDisplay()
             ? html` <div class="image-wrapper">
                 ${this.getSortedFiles().length === 0
                   ? html`<h4>No files Found</h4>`
@@ -699,6 +718,10 @@ export class FileManager extends LitElement {
                       .sortFile=${this.getSortedFiles}
                       .isAscending=${this.isAscending}
                       .thumbsize=${this.thumbsize}
+                      @ondelete=${(e: any) => {
+                        this.activeItem = e.detail.file;
+                        this.handleDeleteAction(e);
+                      }}
                     ></search-content>
                   `
             }
