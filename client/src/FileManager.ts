@@ -500,16 +500,18 @@ export class FileManager extends LitElement {
   handlequeue(e: any) {
     const { draggedEl, data, action } = e.detail;
     let draggedElPathLength;
+    let dropElPathLength = data.dropTargetItem.path.length;
     let sub;
     if (draggedEl) {
       draggedElPathLength = draggedEl.path.length;
       sub = data.dropTargetItem.path.substring(0, draggedElPathLength);
     }
-
     if (
       draggedEl &&
       draggedEl.path !== data.dropTargetItem.path &&
-      draggedEl.path !== sub
+      draggedEl.path !== sub &&
+      draggedEl.name !==
+        draggedEl.path.substring(dropElPathLength + 1, draggedElPathLength)
     ) {
       this.OprType = e.detail.action;
       this.__movedlocation = e.detail.data;
@@ -527,9 +529,13 @@ export class FileManager extends LitElement {
       this.__draggingElement = this.activeItem;
       this.handleDialogMessage(e);
       this.toggleQueueDialog();
+      return;
     } else {
       this.alertmessage = `Please select different location`;
       this.toggleQueueDialog();
+      this.__draggingElement = null;
+      this.__movedlocation = null;
+      this.OprType = '';
     }
   }
 
