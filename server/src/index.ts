@@ -89,10 +89,16 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     file: Express.Multer.File,
     cb: FileFilterCallback
   ) {
+    let path: any = req.header('path') || '/';
+    const resolvedPath = join(uploadPath, path, file.originalname);
     if (checkMimeList.includes(file.mimetype.split("/")[0])) {
-      cb(null, true);
+      if (!fs.existsSync(resolvedPath)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Image already exits, please try another image'));
+      }
     } else {
-      cb(new Error("Invalid file format"));
+      cb(new Error('Invalid file format'));
     }
   }
 
@@ -100,7 +106,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     storage,
     limits: { fileSize: 200 * 1024 * 1024 },
     fileFilter: fileFilter,
-  });
+  }).single('file');
 
   router
     .route("/directory")
@@ -395,8 +401,13 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
   router
     .route("/file")
-    .post(
-      upload.single("file"),
+    .post((req,res)=>{
+      upload(req,res,(err:any)=>{
+        if(err){
+          return res.status(500).json(err.message);
+        }
+        return res.json({msg: 'image uploaded successfully'})
+      })},
       async (req: Request & { destinationPath: string }, res) => {
         CompressImage(req.destinationPath);
         const r = await connection
