@@ -4,7 +4,7 @@ import { LitElement, html, css, property, customElement } from 'lit-element';
 export class Actions extends LitElement {
   @property({ type: String }) context = 'dir';
   @property({ type: String }) selectedItemType = '';
-  @property({ type: String }) currentpath = '/';
+  @property({ type: String }) currentpath:string = '/';
 
   static styles = css`
     :host {
@@ -17,6 +17,12 @@ export class Actions extends LitElement {
     }
   `;
 
+  checkDirectory() {
+    if (this.context !== 'file' && this.currentpath !== '/') {
+      return true;
+    }
+    return false;
+  }
   render() {
     return html`
       <div
@@ -37,13 +43,18 @@ export class Actions extends LitElement {
           <iron-icon icon="add" slot="prefix"></iron-icon>
           New Subfolder
         </vaadin-button>
-        ${this.context !== 'file'
-          ? this.currentpath !== '/'
-            ? html`<vaadin-button data-action="rename-Directory">
+        ${this.checkDirectory()
+          ? html`<vaadin-button data-action="rename-Directory">
                 <iron-icon icon="find-replace" slot="prefix"></iron-icon>
                 Rename Directory
+              </vaadin-button>
+              <vaadin-button data-action="delete-Directory">
+                <iron-icon
+                  icon="icons:delete-forever"
+                  slot="prefix"
+                ></iron-icon>
+                Delete Directory
               </vaadin-button>`
-            : ''
           : ''}
         <!-- <vaadin-button data-action="fullscreen">
           <iron-icon icon="fullscreen" slot="prefix"></iron-icon>
