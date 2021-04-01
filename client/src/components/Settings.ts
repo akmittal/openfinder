@@ -8,7 +8,7 @@ export class OFSettings extends LitElement {
   @property({ type: Boolean }) show: boolean = false;
 
   @property({ type: String }) column: string = 'name';
-  @property({ type: Boolean }) isAscending: boolean = false;
+  @property({ type: Boolean }) isAscending: boolean = true;
 
   static styles = css`
     :host {
