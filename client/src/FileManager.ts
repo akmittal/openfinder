@@ -8,6 +8,7 @@ import './components/Settings';
 import './components/InputModalUploadImage';
 import './components/SearchContent';
 import './components/alertDialog';
+import './components/Widget';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 import '@vaadin/vaadin-notification';
@@ -24,7 +25,7 @@ export class FileManager extends LitElement {
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
   @query('queue-dialog') queueDialog: any;
-  @query('vaadin-text-field') searchTextField:any;
+  @query('vaadin-text-field') searchTextField: any;
   @property({ type: String }) serverURL: string = '';
 
   @property({ type: String }) sortColumn: string = 'name';
@@ -39,6 +40,8 @@ export class FileManager extends LitElement {
   @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Boolean }) showsubmit: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
+  @property({ type: String }) showBlocks: String = '';
+  @property({ type: String }) selectedWidget: string = '';
   @property({ type: Number }) directryKey: number = 0;
   @property({ type: Number }) thumbsize: number = 15;
   @property({ type: Boolean }) showSettings: boolean = false;
@@ -67,7 +70,6 @@ export class FileManager extends LitElement {
       this.reloadFiles();
     }
   };
-
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot?.addEventListener('onqueueaction', (e: any) => {
@@ -76,7 +78,6 @@ export class FileManager extends LitElement {
   }
 
   attributeChangedCallback(name: string, oldval: any, newval: any) {
-    console.log('attribute change: ', name, newval);
     super.attributeChangedCallback(name, oldval, newval);
     if (name === 'appshown' && newval === 'true') {
       this.getFiles(this.context.path);
@@ -218,10 +219,34 @@ export class FileManager extends LitElement {
       display: flex;
       padding: 10px 10px;
     }
+    .widget-container {
+      display: flex;
+      justify-content: center;
+      width:75vw;
+      margin: auto;
+
+    }
+    .widget-list-item {
+      display: flex;
+      justify-content: space-evenly;
+
+      flex-direction: row;
+      flex-wrap: wrap;
+      overflow-y: scroll;
+    }
   `;
-  handleSubmit = (e: any) => {
+  handleSubmit = (e: any, type : String) => {
+    const detail:any = {};
+    if(type === 'Widget') {
+      detail.type = type;
+      detail.data = this.selectedWidget
+    } else {
+      detail.type = type;
+      detail.data = this.activeItem
+    }
+
     const event = new CustomEvent('mediaselected', {
-      detail: this.activeItem,
+      detail
     });
     this.dispatchEvent(event);
   };
@@ -362,7 +387,7 @@ export class FileManager extends LitElement {
     this.searchTerm = e.target ? e.target.value : e;
     this.files = [];
     if (this.searchTerm.length > 0) {
-      this.currentContext = 'search'
+      this.currentContext = 'search';
       this.files = (
         await (
           await fetch(`${this.serverURL}/search?key=${this.searchTerm}`)
@@ -370,7 +395,7 @@ export class FileManager extends LitElement {
       ).data;
     } else {
       this.reloadFiles();
-      this.currentContext = 'dir'
+      this.currentContext = 'dir';
     }
   };
   handleFileAction = (e: CustomEvent) => {
@@ -503,7 +528,7 @@ export class FileManager extends LitElement {
           break;
         case 'image:Drag':
           await this.moveImage();
-          this.context = { path: this.context.path};
+          this.context = { path: this.context.path };
           this.reloadFiles();
           break;
         case 'DragDir':
@@ -599,113 +624,146 @@ export class FileManager extends LitElement {
     }
     return false;
   }
+  checkWidgetToLoad() {
+    if (this.showBlocks.length > 0) {
+      return true;
+    }
+    return false;
+  }
 
   render() {
     return html`
-      <input-modal
-        .opened=${this.inputModalState}
-        @onsubmit=${this.handleInoutSelect}
-      ></input-modal>
-      <input-modal-upload
-        .opened=${this.uploadModalState}
-        serverURL=${this.serverURL}
-        imagePath=${this.activeItem ? this.activeItem.path : ''}
-        @onsubmit=${this.handleInoutSelect}
-      ></input-modal-upload>
-      <queue-dialog
-        .message=${this.alertmessage ? this.alertmessage : ''}
-        .opened=${this.alertDialogState}
-        @onaction=${this.handleDialogAction}
-      ></queue-dialog>
-      <vaadin-notification .duration="4000" position="bottom-center">
-      </vaadin-notification>
-      <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
-        <of-settings
-          .show=${this.showSettings}
-          @op:sortfield=${this.handleSortChange}
-          @of:close-settings=${(e: CustomEvent) => this.toggleSettings()}
-          @op:thumbchange=${this.handleThumbChange}
-        ></of-settings>
-        <div class="wrapper">
-          <loading-spinner .show=${this.isLoading}></loading-spinner>
-          <file-actions
-            selectedItemType=${this.activeItem ? this.activeItem.type : ''}
-            context=${this.currentContext}
-            currentPath=${this.context.path}
-            @onaction=${this.handleFileAction}
-          ></file-actions>
-          <div class="padding-x">
-            <vaadin-text-field
-              placeholder="Search..."
-              @input=${this.handleSearch}
-            ></vaadin-text-field>
-          </div>
-          <div class="setting-container">
-            <iron-icon
-              icon="settings"
-              role="button"
-              @click=${this.toggleSettings}
-            ></iron-icon>
-          </div>
-        </div>
+      ${
+        this.checkWidgetToLoad()
+          ? html`
+              <div class="widget-container">
+                <div class="widget-list-item">
+                  ${this.showBlocks.split(',').map((file: string) => {
+                    return html`
+                      <widget-content
+                        .files=${file}
+                        @click=${(e: any) => {
+                          this.selectedWidget = file;
+                        }}
+                        @dblclick=${(e: Event) => {
+                          this.selectedWidget = file;
+                          this.handleSubmit(e, 'Widget');
+                        }}
+                        .selected=${this.selectedWidget === file}
+                      ></widget-content>
+                    `;
+                  })}
+                </div>
+              </div>
+            `
+          : html`
+              <input-modal
+                .opened=${this.inputModalState}
+                @onsubmit=${this.handleInoutSelect}
+              ></input-modal>
+              <input-modal-upload
+                .opened=${this.uploadModalState}
+                serverURL=${this.serverURL}
+                imagePath=${this.activeItem ? this.activeItem.path : ''}
+                @onsubmit=${this.handleInoutSelect}
+              ></input-modal-upload>
+              <queue-dialog
+                .message=${this.alertmessage ? this.alertmessage : ''}
+                .opened=${this.alertDialogState}
+                @onaction=${this.handleDialogAction}
+              ></queue-dialog>
+              <vaadin-notification .duration="4000" position="bottom-center">
+              </vaadin-notification>
+              <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
+                <of-settings
+                  .show=${this.showSettings}
+                  @op:sortfield=${this.handleSortChange}
+                  @of:close-settings=${(e: CustomEvent) =>
+                    this.toggleSettings()}
+                  @op:thumbchange=${this.handleThumbChange}
+                ></of-settings>
+                <div class="wrapper">
+                  <loading-spinner .show=${this.isLoading}></loading-spinner>
+                  <file-actions
+                    selectedItemType=${this.activeItem
+                      ? this.activeItem.type
+                      : ''}
+                    context=${this.currentContext}
+                    currentPath=${this.context.path}
+                    @onaction=${this.handleFileAction}
+                  ></file-actions>
+                  <div class="padding-x">
+                    <vaadin-text-field
+                      placeholder="Search..."
+                      @input=${this.handleSearch}
+                    ></vaadin-text-field>
+                  </div>
+                  <div class="setting-container">
+                    <iron-icon
+                      icon="settings"
+                      role="button"
+                      @click=${this.toggleSettings}
+                    ></iron-icon>
+                  </div>
+                </div>
 
-        <file-directories
-          @click=${(e:any)=> {
-            if(this.searchTerm.length >0 ) {
-              this.searchTextField.value = '';
-              this.searchTerm = '';
-              this.currentContext = 'dir'
-            }
-          }}
-          changed=${this.directryKey}
-          .serverURL=${this.serverURL}
-          class="drawer"
-          @onselection=${this.handleSelection}
-        ></file-directories>
+                <file-directories
+                  @click=${(e: any) => {
+                    if (this.searchTerm.length > 0) {
+                      this.searchTextField.value = '';
+                      this.searchTerm = '';
+                      this.currentContext = 'dir';
+                    }
+                  }}
+                  changed=${this.directryKey}
+                  .serverURL=${this.serverURL}
+                  class="drawer"
+                  @onselection=${this.handleSelection}
+                ></file-directories>
 
-        <div class="content flex flex-col">
-          <vaadin-upload
-            style="overflow:visible"
-            data-action="edit"
-            type="file"
-            accept="video/*,image/*"
-            .target=${`${this.serverURL}/file`}
-            .headers=${{ path: this.context.path }}
-            @upload-success=${this.onFileUpload}
-          >
-          </vaadin-upload>
+                <div class="content flex flex-col">
+                  <vaadin-upload
+                    style="overflow:visible"
+                    data-action="edit"
+                    type="file"
+                    accept="video/*,image/*"
+                    .target=${`${this.serverURL}/file`}
+                    .headers=${{ path: this.context.path }}
+                    @upload-success=${this.onFileUpload}
+                  >
+                  </vaadin-upload>
 
-          ${this.handleGalleryDisplay()
-            ? html` <div class="image-wrapper">
-                ${this.getSortedFiles().length === 0
-                  ? html`<h4>No files Found</h4>`
-                  : html``}
-                ${this.getSortedFiles().map(
-                  file =>
-                    html`<file-card
-                      style=${`width:${this.thumbsize}em`}
-                      .serverURL=${this.serverURL}
-                      .data=${file}
-                      @dblclick=${(e: Event) => {
-                        this.handleSubmit(e);
-                      }}
-                      @click=${(e: any) => {
-                        this.activeItem = file;
-                        this.currentContext = 'file';
-                      }}
-                      @drag=${(e: any) => {
-                        e.preventDefault();
-                        this.activeItem = file;
-                      }}
-                      @ondelete=${(e: any) => {
-                        this.activeItem = file;
-                        this.handleDeleteAction(e);
-                      }}
-                      .selected=${this.activeItem === file}
-                    ></file-card>`
-                )}
-              </div>`
-            : html`
+                  ${this.handleGalleryDisplay()
+                    ? html` <div class="image-wrapper">
+                        ${this.getSortedFiles().length === 0
+                          ? html`<h4>No files Found</h4>`
+                          : html``}
+                        ${this.getSortedFiles().map(
+                          file =>
+                            html`<file-card
+                              style=${`width:${this.thumbsize}em`}
+                              .serverURL=${this.serverURL}
+                              .data=${file}
+                              @dblclick=${(e: Event) => {
+                                this.handleSubmit(e, 'Gallery');
+                              }}
+                              @click=${(e: any) => {
+                                this.activeItem = file;
+                                this.currentContext = 'file';
+                              }}
+                              @drag=${(e: any) => {
+                                e.preventDefault();
+                                this.activeItem = file;
+                              }}
+                              @ondelete=${(e: any) => {
+                                this.activeItem = file;
+                                this.handleDeleteAction(e);
+                              }}
+                              .selected=${this.activeItem === file}
+                            ></file-card>`
+                        )}
+                      </div>`
+                    : html`
           <div class="search-wrapper">
             ${
               this.files.length === 0
@@ -728,20 +786,27 @@ export class FileManager extends LitElement {
           </div>
         </div>
         `}
-
-          <section class=${`selection ${!this.showsubmit ? 'hidden' : ''}`}>
-            <section>
-              <vaadin-button @click=${this.handleCancel}>Cancel</vaadin-button>
-              <vaadin-button
-                theme="primary"
-                @click=${this.handleSubmit}
-                .disabled=${!this.activeItem}
-                >Submit</vaadin-button
-              >
-            </section>
-          </section>
-        </div>
-      </div>
+                </div>
+              </div>
+            `
+      }
+                <section
+                  class=${`selection ${!this.showsubmit ? 'hidden' : ''}`}
+                >
+                  <section>
+                    <vaadin-button @click=${this.handleCancel}
+                      >Cancel</vaadin-button
+                    >
+                    <vaadin-button
+                      theme="primary"
+                      @click=${this.handleSubmit.bind(this, 'Gallery')}
+                      .disabled=${!this.activeItem}
+                      >Submit</vaadin-button
+                    >
+                  </section>
+                </section>
+              </div>
+            </div>
     `;
   }
 }
