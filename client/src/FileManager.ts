@@ -40,7 +40,8 @@ export class FileManager extends LitElement {
   @property({ type: Boolean }) appShown: boolean = true;
   @property({ type: Boolean }) showsubmit: boolean = true;
   @property({ type: Array }) files: Array<any> = [];
-  @property({ type: String }) showBlocks: String = '';
+  @property({ type: String }) showblocks: String = '';
+  @property({ type: String }) showwidget: String = 'false';
   @property({ type: String }) selectedWidget: string = '';
   @property({ type: Number }) directryKey: number = 0;
   @property({ type: Number }) thumbsize: number = 15;
@@ -222,9 +223,8 @@ export class FileManager extends LitElement {
     .widget-container {
       display: flex;
       justify-content: center;
-      width:75vw;
+      width: 75vw;
       margin: auto;
-
     }
     .widget-list-item {
       display: flex;
@@ -235,18 +235,18 @@ export class FileManager extends LitElement {
       overflow-y: scroll;
     }
   `;
-  handleSubmit = (e: any, type : String) => {
-    const detail:any = {};
-    if(type === 'Widget') {
+  handleSubmit = (e: any, type: String) => {
+    const detail: any = {};
+    if (type === 'Widget') {
       detail.type = type;
-      detail.data = this.selectedWidget
+      detail.data = this.selectedWidget;
     } else {
       detail.type = type;
-      detail.data = this.activeItem
+      detail.data = this.activeItem;
     }
 
     const event = new CustomEvent('mediaselected', {
-      detail
+      detail,
     });
     this.dispatchEvent(event);
   };
@@ -625,12 +625,18 @@ export class FileManager extends LitElement {
     return false;
   }
   checkWidgetToLoad() {
-    if (this.showBlocks.length > 0) {
+    if (this.showwidget === 'true') {
       return true;
     }
     return false;
   }
 
+  getBlocksData() {
+    if(this.showblocks) {
+      return this.showblocks.split(',');
+    }
+    return [];
+  }
   render() {
     return html`
       ${
@@ -638,21 +644,23 @@ export class FileManager extends LitElement {
           ? html`
               <div class="widget-container">
                 <div class="widget-list-item">
-                  ${this.showBlocks.split(',').map((file: string) => {
-                    return html`
-                      <widget-content
-                        .files=${file}
-                        @click=${(e: any) => {
-                          this.selectedWidget = file;
-                        }}
-                        @dblclick=${(e: Event) => {
-                          this.selectedWidget = file;
-                          this.handleSubmit(e, 'Widget');
-                        }}
-                        .selected=${this.selectedWidget === file}
-                      ></widget-content>
-                    `;
-                  })}
+                  ${this.getBlocksData().length === 0
+                    ? html`<h4>No widgets availble here</h4>`
+                    : this.getBlocksData().map((file: string) => {
+                        return html`
+                          <widget-content
+                            .files=${file}
+                            @click=${(e: any) => {
+                              this.selectedWidget = file;
+                            }}
+                            @dblclick=${(e: Event) => {
+                              this.selectedWidget = file;
+                              this.handleSubmit(e, 'Widget');
+                            }}
+                            .selected=${this.selectedWidget === file}
+                          ></widget-content>
+                        `;
+                      })}
                 </div>
               </div>
             `
