@@ -299,7 +299,7 @@ export class FileManager extends LitElement {
         return res.json();
       })
       .catch((err: any) => {
-        this.handleNotificationPopup(err);
+        this.handleNotificationPopup(err.statusText);
       });
   };
 
@@ -310,7 +310,7 @@ export class FileManager extends LitElement {
       boldText.textContent = 'Error';
 
       const br = window.document.createElement('br');
-      const plainText = window.document.createTextNode(err.statusText);
+      const plainText = window.document.createTextNode(err);
 
       container.appendChild(boldText);
       container.appendChild(br);
@@ -672,6 +672,9 @@ export class FileManager extends LitElement {
             .target=${`${this.serverURL}/file`}
             .headers=${{ path: this.context.path }}
             @upload-success=${this.onFileUpload}
+            @upload-error=${(e:any)=>{
+              this.handleNotificationPopup(e.detail.xhr.response);
+            }}
           >
           </vaadin-upload>
 
