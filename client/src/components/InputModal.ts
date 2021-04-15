@@ -33,15 +33,15 @@ export class InputModal extends LitElement {
   }
   handleClick(e: any) {
     if (this.checkInput() && this.input.value.length > 0) {
-      const event = new CustomEvent('onsubmit', { detail: this.input.value });
+      const event = new CustomEvent('onsubmit', { detail: this.input.value.trim() });
       this.dispatchEvent(event);
-      this.input.value = '';
       this.input.invalid = false;
     } else {
       this.input.invalid = true;
     }
   }
   handleCloseDialog() {
+    this.input.value = '';
     this.input.invalid = false;
   }
 
@@ -49,7 +49,6 @@ export class InputModal extends LitElement {
     return html`
       <mwc-dialog .open=${this.opened} @closed=${this.handleCloseDialog}>
         <vaadin-text-field
-          required
           error-message="Invalid Input"
           @keypress=${(e: KeyboardEvent) => {
             if (this.input.value.length > 0) {
