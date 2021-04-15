@@ -401,14 +401,11 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
   router
     .route("/file")
-    .post((req,res)=>{
-      upload(req,res,(err:any)=>{
-        if(err){
+    .post((req: Request & { destinationPath: string }, res) => {
+      upload(req, res, async (err: any) => {
+        if (err) {
           return res.status(500).json(err.message);
         }
-        return res.json({msg: 'image uploaded successfully'})
-      })},
-      async (req: Request & { destinationPath: string }, res) => {
         CompressImage(req.destinationPath);
         const r = await connection
           .getRepository("image")
@@ -423,8 +420,8 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           })
           .execute();
         res.json({ r });
-      }
-    )
+      });
+    })
     .get(async (req: Request, res: Response) => {
       try {
         const context: any = req.query.context;
