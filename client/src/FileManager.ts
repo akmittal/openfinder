@@ -577,7 +577,7 @@ export class FileManager extends LitElement {
       this.toggleQueueDialog();
       return;
     } else {
-      this.alertmessage = `Please select different location`;
+      this.alertmessage = `Something went wrong.... Please select different location`;
       this.toggleQueueDialog();
       this.__draggingElement = null;
       this.__movedlocation = null;
@@ -615,6 +615,7 @@ export class FileManager extends LitElement {
       <queue-dialog
         .message=${this.alertmessage ? this.alertmessage : ''}
         .opened=${this.alertDialogState}
+        oprType=${this.OprType}
         @onaction=${this.handleDialogAction}
       ></queue-dialog>
       <vaadin-notification .duration="4000" position="bottom-center">
