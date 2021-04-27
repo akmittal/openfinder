@@ -13,6 +13,7 @@ import '@material/mwc-button';
 export class QueueModal extends LitElement {
   @property({ type: Boolean }) opened = false;
   @property({ type: String }) message = '';
+  @property({ type: String }) oprType = '';
   static styles = css`
     :host {
       display: flex;
@@ -39,9 +40,13 @@ export class QueueModal extends LitElement {
         <mwc-button slot="primaryAction" dialogAction="confirm"
           >Confirm</mwc-button
         >
-        <mwc-button slot="secondaryAction" dialogAction="cancel"
-          >Cancel</mwc-button
-        >
+        ${this.oprType !== ''
+          ? html`
+              <mwc-button slot="secondaryAction" dialogAction="cancel">
+                Cancel
+              </mwc-button>
+            `
+          : ''}
       </mwc-dialog>
     `;
   }
