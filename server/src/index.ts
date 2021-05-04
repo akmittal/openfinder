@@ -17,13 +17,13 @@ import mime from "mime";
 import { CompressImage } from "./util/compress";
 import { spawnSync } from "child_process";
 
-const app = express();
-createConnection().then((connection) => {
-  app.use("/", bootstrap(connection, resolve("./uploads")));
-  app.listen(5000, () => {
-    console.log("started");
-  });
-});
+// const app = express();
+// createConnection().then((connection) => {
+//   app.use("/", bootstrap(connection, resolve("./uploads")));
+//   app.listen(5000, () => {
+//     console.log("started");
+//   });
+// });
 
 export function bootstrap(connection: Connection, uploadPath: string): Router {
   const router = Router();
