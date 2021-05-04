@@ -19,6 +19,8 @@ export class Directories extends LitElement {
   static styles = css`
     :host {
       height: 100vh;
+      max-height:100%;
+      overflow:scroll;
     }
 
     ::part(cell) {

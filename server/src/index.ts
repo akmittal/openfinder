@@ -406,7 +406,6 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
         if (err) {
           return res.status(500).json(err.message);
         }
-        CompressImage(req.destinationPath);
         const r = await connection
           .getRepository("image")
           .createQueryBuilder()
