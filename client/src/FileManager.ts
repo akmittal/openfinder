@@ -11,6 +11,8 @@ import './components/alertDialog';
 import '@vaadin/vaadin-text-field';
 import '@vaadin/vaadin-button';
 import '@vaadin/vaadin-notification';
+import { Observable, fromEvent } from 'rxjs';
+import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import '@vaadin/vaadin-upload';
 import '@vaadin/vaadin-grid';
@@ -24,7 +26,7 @@ export class FileManager extends LitElement {
   @query('input-modal-upload') uploadImageModal: any;
   @query('vaadin-upload') vaadinUpload: any;
   @query('queue-dialog') queueDialog: any;
-  @query('vaadin-text-field') searchTextField:any;
+  @query('vaadin-text-field') searchTextField: any;
   @property({ type: String }) serverURL: string = '';
 
   @property({ type: String }) sortColumn: string = 'name';
@@ -73,6 +75,18 @@ export class FileManager extends LitElement {
     this.shadowRoot?.addEventListener('onqueueaction', (e: any) => {
       this.handlequeue(e);
     });
+  }
+
+  firstUpdated() {
+    if (this.searchTextField) {
+      fromEvent(this.searchTextField, 'input')
+        .pipe(
+          map((event: any) => event.target.value),
+          debounceTime(250),
+          distinctUntilChanged()
+        )
+        .subscribe(this.handleSearch);
+    }
   }
 
   attributeChangedCallback(name: string, oldval: any, newval: any) {
@@ -362,7 +376,7 @@ export class FileManager extends LitElement {
     this.searchTerm = e.target ? e.target.value : e;
     this.files = [];
     if (this.searchTerm.length > 0) {
-      this.currentContext = 'search'
+      this.currentContext = 'search';
       this.files = (
         await (
           await fetch(`${this.serverURL}/search?key=${this.searchTerm}`)
@@ -370,7 +384,7 @@ export class FileManager extends LitElement {
       ).data;
     } else {
       this.reloadFiles();
-      this.currentContext = 'dir'
+      this.currentContext = 'dir';
     }
   };
   handleFileAction = (e: CustomEvent) => {
@@ -503,7 +517,7 @@ export class FileManager extends LitElement {
           break;
         case 'image:Drag':
           await this.moveImage();
-          this.context = { path: this.context.path};
+          this.context = { path: this.context.path };
           this.reloadFiles();
           break;
         case 'DragDir':
@@ -636,10 +650,7 @@ export class FileManager extends LitElement {
             @onaction=${this.handleFileAction}
           ></file-actions>
           <div class="padding-x">
-            <vaadin-text-field
-              placeholder="Search..."
-              @input=${this.handleSearch}
-            ></vaadin-text-field>
+            <vaadin-text-field placeholder="Search..."></vaadin-text-field>
           </div>
           <div class="setting-container">
             <iron-icon
@@ -651,11 +662,11 @@ export class FileManager extends LitElement {
         </div>
 
         <file-directories
-          @click=${(e:any)=> {
-            if(this.searchTerm.length >0 ) {
+          @click=${(e: any) => {
+            if (this.searchTerm.length > 0) {
               this.searchTextField.value = '';
               this.searchTerm = '';
-              this.currentContext = 'dir'
+              this.currentContext = 'dir';
             }
           }}
           changed=${this.directryKey}
@@ -673,7 +684,7 @@ export class FileManager extends LitElement {
             .target=${`${this.serverURL}/file`}
             .headers=${{ path: this.context.path }}
             @upload-success=${this.onFileUpload}
-            @upload-error=${(e:any)=>{
+            @upload-error=${(e: any) => {
               this.handleNotificationPopup(e.detail.xhr.response);
             }}
           >
