@@ -82,7 +82,7 @@ export class FileManager extends LitElement {
       fromEvent(this.searchTextField, 'input')
         .pipe(
           map((event: any) => event.target.value),
-          debounceTime(250),
+          debounceTime(300),
           distinctUntilChanged()
         )
         .subscribe(this.handleSearch);
