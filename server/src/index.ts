@@ -6,10 +6,13 @@ import {
   json,
   urlencoded,
   static as staticServer,
+  /* @ts-ignore */
 } from "express";
+/* @ts-ignore */
 import multer, { FileFilterCallback } from "multer";
 import fs, { readdirSync } from "fs";
 import { join, resolve, extname } from "path";
+/* @ts-ignore */
 import cors from "cors";
 import sharp from "sharp";
 import { Connection, createConnection } from "typeorm";
@@ -29,7 +32,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
   const router = Router();
 
   router.use(cors());
-  const checkMimeList = ["video", "image"];
+  const allowedMimeTypes = ["video", "image"];
 
   function removeExtension(filename: string) {
     return filename.split(".").slice(0, -1).join(".");
@@ -47,7 +50,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     readdirSync(source, { withFileTypes: true }).filter(
       (dirent) =>
         !dirent.isDirectory() &&
-        checkMimeList.includes(
+        allowedMimeTypes.includes(
           mime.getType(join(source, dirent.name))?.split("/")[0]
         )
     );
@@ -58,8 +61,8 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
   const storage = multer.diskStorage({
     destination: async (
       req: Request & { destinationDir: string },
-      file,
-      cb
+      file: any,
+      cb: any
     ) => {
       let path: any = req.header("path") || "/";
       if (path === "undefined") {
@@ -75,8 +78,8 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     },
     filename: (
       req: Request & { destinationDir: string; destinationPath: string },
-      file,
-      cb
+      file: any,
+      cb: any
     ) => {
       const filename = file.originalname;
       req.destinationPath = join(req.destinationDir, filename);
@@ -86,27 +89,26 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
   function fileFilter(
     req: Request,
+    /* @ts-ignore */
     file: Express.Multer.File,
     cb: FileFilterCallback
   ) {
-    let path: any = req.header('path') || '/';
+    const path: any = req.header("path") || "/";
     const resolvedPath = join(uploadPath, path, file.originalname);
-    if (checkMimeList.includes(file.mimetype.split("/")[0])) {
-      if (!fs.existsSync(resolvedPath)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Image already exits, please try another image'));
-      }
-    } else {
-      cb(new Error('Invalid file format'));
-    }
+    const fileMimeType = file.mimetype.split("/")[0];
+    if (allowedMimeTypes.includes(fileMimeType)) {
+      if (!fs.existsSync(resolvedPath)) cb(null, true);
+      else cb(new Error("File exits already; Please try another one"));
+    } else cb(new Error("Invalid file format"));
   }
 
+  // nginx client_max_body_size to be set slightly higher than 2G
+  // so that the app catches it instead of nginx
   const upload = multer({
     storage,
-    limits: { fileSize: 200 * 1024 * 1024 },
+    limits: { fileSize: 2 * 1000 * 1024 * 1024 },
     fileFilter: fileFilter,
-  }).single('file');
+  }).single("file");
 
   router
     .route("/directory")
@@ -115,10 +117,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       const resolvedPath = join(uploadPath, context, dir);
       if (!fs.existsSync(resolvedPath)) {
         fs.mkdirSync(resolvedPath);
-        return res.json({ msg: 'directory created successfully' });
+        return res.json({ msg: "directory created successfully" });
       }
-      res.statusMessage = 'Directory already exit';
-      return res.status(500).send('file already exits');
+      res.statusMessage = "Directory already exit";
+      return res.status(500).send("file already exits");
     })
     .get((req: Request, res: Response) => {
       const context: any = req.query.context;
@@ -170,31 +172,34 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
   router
     .route("/replace")
-    .post(imgReplaceMulterInst.single("file"), async (req: Request, res) => {
-      try {
-        let imagePath: any = req.query.path;
-        imagePath = decodeURIComponent(imagePath);
-        let file = req.file;
-        const resolvedSource = join(uploadPath, imagePath);
+    .post(
+      imgReplaceMulterInst.single("file"),
+      async (req: Request, res: Response) => {
+        try {
+          let imagePath: any = req.query.path;
+          imagePath = decodeURIComponent(imagePath);
+          let file = req.file;
+          const resolvedSource = join(uploadPath, imagePath);
 
-        const outStream = fs.createWriteStream(resolvedSource);
-        outStream.write(file.buffer);
-        outStream.end();
-        outStream.on("finish", function (err: any) {
-          if (!err) {
-            res.json({ msg: "done" });
-          }
-        });
-      } catch (err) {
-        res.status(500).send(err.toString());
-        console.error(err);
+          const outStream = fs.createWriteStream(resolvedSource);
+          outStream.write(file.buffer);
+          outStream.end();
+          outStream.on("finish", function (err: any) {
+            if (!err) {
+              res.json({ msg: "done" });
+            }
+          });
+        } catch (err) {
+          res.status(500).send(err.toString());
+          console.error(err);
+        }
       }
-    });
+    );
   router.route("/delete").post(async (req: Request, res: Response) => {
     let { context, filename, filePath } = req.body;
     filePath = decodeURIComponent(filePath);
     try {
-      const resolvedSource = join(uploadPath,filePath);
+      const resolvedSource = join(uploadPath, filePath);
       fs.unlinkSync(resolvedSource);
       await connection
         .getRepository("image")
@@ -232,10 +237,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           res.json({ msg: "directory deleted successfully" });
         }
         if (status !== 0) {
-          throw new Error('No such file or directory exit');
+          throw new Error("No such file or directory exit");
         }
       } catch (e) {
-        console.error('Error in Delete Directory Operation', e);
+        console.error("Error in Delete Directory Operation", e);
         res.statusMessage = e;
         res.status(500).send(e);
       }
@@ -257,10 +262,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .execute();
         res.json({ msg: "done" });
       } else {
-        throw new Error('Image Already exit');
+        throw new Error("Image Already exit");
       }
     } catch (err) {
-      console.log('Error in Move Operation', err);
+      console.log("Error in Move Operation", err);
       res.statusMessage = err;
       res.status(500).send(err.toString());
     }
@@ -298,10 +303,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
           res.json({ msg: "done" });
         } else {
-          throw new Error('Directory already exits');
+          throw new Error("Directory already exits");
         }
       } catch (err) {
-        console.error('Error in rename directory operation', err);
+        console.error("Error in rename directory operation", err);
         res.statusMessage = err;
         res.status(500).send(err.toString());
       }
@@ -335,16 +340,16 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .execute();
         res.json({ msg: "done" });
       } else {
-        throw new Error('Directory already exits');
+        throw new Error("Directory already exits");
       }
     } catch (err) {
-      console.error('Error in move directory operation', err);
+      console.error("Error in move directory operation", err);
       res.statusMessage = err;
       res.status(500).send(err);
     }
   });
 
-  router.route("/search").get(async (req: Request, res) => {
+  router.route("/search").get(async (req: Request, res: Response) => {
     try {
       let keyword: any = req.query.key;
       let filterCondition = {
@@ -401,9 +406,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
   router
     .route("/file")
-    .post((req: Request & { destinationPath: string }, res) => {
+    .post((req: Request & { destinationPath: string }, res: Response) => {
       upload(req, res, async (err: any) => {
         if (err) {
+          console.log("aaaaaaaaaaa", err);
           return res.status(500).json(err.message);
         }
         const r = await connection
@@ -474,9 +480,12 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
-  router.use("/static", staticServer(uploadPath, {
-    cacheControl: false
-  }));
+  router.use(
+    "/static",
+    staticServer(uploadPath, {
+      cacheControl: false,
+    })
+  );
 
   async function readDescription(path: string) {
     const res: any = await connection
