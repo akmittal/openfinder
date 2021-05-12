@@ -68,6 +68,7 @@
     "@vaadin/vaadin": "^17.0.11",
     "@vaadin/vaadin-lumo-styles": "^1.6.1",
     "lit-element": "^2.0.1",
-    "lit-html": "^1.0.0"
+    "lit-html": "^1.0.0",
+    "rxjs": "^6.6.7"
   }
 }

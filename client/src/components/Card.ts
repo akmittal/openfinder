@@ -34,10 +34,14 @@ export class Card extends LitElement {
     }
     .title {
       font-size: 1rem;
+      width: 100%;
+      word-wrap: break-word;
     }
     .sub {
       font-size: 0.8rem;
       color: #999;
+      width: 100%;
+      word-wrap: break-word;
     }
     .actions {
       display: flex;
