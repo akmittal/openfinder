@@ -117,7 +117,7 @@ export class FileManager extends LitElement {
       overflow: hidden;
       position: relative;
       background: #f1f1f1;
-      flex: 1 1 100%;
+      flex: 1 1 auto;
       display: block;
       position: relative;
       flex-direction: column;
@@ -126,6 +126,7 @@ export class FileManager extends LitElement {
       font-size: calc(10px + 2vmin);
       color: #1a2b42;
       margin: 0 auto;
+      width: 100%;
       /* text-align: center; */
     }
 
