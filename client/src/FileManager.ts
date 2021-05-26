@@ -215,6 +215,9 @@ export class FileManager extends LitElement {
     .app-layout > .selection {
       grid-area: footer;
     }
+    .app-layout.gallery {
+      grid-template-rows: 50px 1fr 5px;
+    }
     .hidden {
       display: none;
     }
@@ -614,6 +617,16 @@ export class FileManager extends LitElement {
     }
     return false;
   }
+  getAppLayoutClass() {
+    if(!this.appShown ) {
+      return 'hidden app-layout';
+    }else {
+      if(!this.showsubmit) {
+        return `app-layout gallery`;
+      }
+      return `app-layout`;
+    }
+  }
 
   render() {
     return html`
@@ -635,7 +648,7 @@ export class FileManager extends LitElement {
       ></queue-dialog>
       <vaadin-notification .duration="4000" position="bottom-center">
       </vaadin-notification>
-      <div class=${!this.appShown ? 'hidden app-layout' : 'app-layout'}>
+      <div class=${this.getAppLayoutClass()}>
         <of-settings
           .show=${this.showSettings}
           @op:sortfield=${this.handleSortChange}
