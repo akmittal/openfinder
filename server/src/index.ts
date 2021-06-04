@@ -19,7 +19,7 @@ import { Connection, createConnection } from "typeorm";
 import mime from "mime";
 import { CompressImage } from "./util/compress";
 import { spawnSync } from "child_process";
-
+import { filterFolderList, allowedMimeTypes } from './config/FileConfig';
 // const app = express();
 // createConnection().then((connection) => {
 //   app.use("/", bootstrap(connection, resolve("./uploads")));
@@ -32,7 +32,6 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
   const router = Router();
 
   router.use(cors());
-  const allowedMimeTypes = ["video", "image"];
 
   function removeExtension(filename: string) {
     return filename.split(".").slice(0, -1).join(".");
@@ -43,7 +42,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
 
   const getDirectories = (source: string) =>
     readdirSync(source, { withFileTypes: true })
-      .filter((dirent) => dirent.isDirectory())
+      .filter(
+        (dirent: any) =>
+          dirent.isDirectory() && !filterFolderList.includes(dirent.name)
+      )
       .map((dirent) => dirent.name);
 
   const getFiles = (source: string) =>
