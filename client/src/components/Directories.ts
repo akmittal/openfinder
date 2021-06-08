@@ -19,18 +19,19 @@ export class Directories extends LitElement {
   static styles = css`
     :host {
       height: 100vh;
-      max-height:100%;
-      overflow:scroll;
+      max-height: 100%;
+      overflow: scroll;
     }
 
     ::part(cell) {
       background-color: transparent;
+      width: 50vw;
     }
     vaadin-grid-cell-content[active] {
       border: 2px solid red;
       -webkit-user-drag: element;
     }
-    vaadin-grid-cell-content{
+    vaadin-grid-cell-content {
       -webkit-user-drag: element;
     }
   `;
@@ -54,7 +55,7 @@ export class Directories extends LitElement {
       composed: true,
     });
     this.dispatchEvent(ev);
-    this.__draggingElement ='';
+    this.__draggingElement = '';
   };
   attributeChangedCallback(name: string, old: any, newVal: any) {
     super.attributeChangedCallback(name, old, newVal);
