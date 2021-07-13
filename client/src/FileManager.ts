@@ -248,10 +248,11 @@ export class FileManager extends LitElement {
     this.dispatchEvent(event);
   };
   handleSelection = async (e: CustomEvent) => {
-    this.context = e.detail;
-    this.currentContext = 'dir';
-
-    await this.getFiles(e.detail.path);
+    if (e.detail) {
+      this.context = e.detail;
+      this.currentContext = 'dir';
+      await this.getFiles(e.detail.path);
+    }
   };
   triggerDownload() {
     const link = document.createElement('a');
