@@ -22,8 +22,8 @@ export class InputModal extends LitElement {
     }
   `;
   checkInput() {
-    // should contain any html tags and special chars *^()%=#!
-    const regx = new RegExp('.*?(<(.*)>.*?|<(.*)/>)|(.*?[*^()%=#!])');
+    // if input value contain or start with any html tags or special chars *^()%=#! ,then input is invalid
+    const regx = new RegExp('.*?(<(.*)>.*?|<(.*)/>)|(.*?[*^()%=#!])|(^[&*()-@#$%!~{}])');
     const status = regx.test(this.input.value);
     if (status) {
       this.input.invalid = true;

@@ -103,8 +103,12 @@ export class FileManager extends LitElement {
   async getFiles(context: string) {
     this.isLoading = true;
     this.files = [];
+    let opts = {
+      context: context,
+    };
+
     this.files = (
-      await (await fetch(`${this.serverURL}/file?context=${context}`)).json()
+      await this.fetchContent(`${this.serverURL}/get/file`, opts)
     ).data;
     if (this.showsubmit) {
       this.files = this.files.filter((file: any) => file.type !== 'video');
@@ -264,7 +268,7 @@ export class FileManager extends LitElement {
 
   async createNewSubFolder(folderName: string) {
     // console.log('a', this.context);
-    const url = `${this.serverURL}/directory`;
+    const url = `${this.serverURL}/add/directory`;
     const body = {
       context: this.context.path,
       dir: folderName,
@@ -618,10 +622,10 @@ export class FileManager extends LitElement {
     return false;
   }
   getAppLayoutClass() {
-    if(!this.appShown ) {
+    if (!this.appShown) {
       return 'hidden app-layout';
-    }else {
-      if(!this.showsubmit) {
+    } else {
+      if (!this.showsubmit) {
         return `app-layout gallery`;
       }
       return `app-layout`;
@@ -695,7 +699,7 @@ export class FileManager extends LitElement {
             data-action="edit"
             type="file"
             accept="video/*,image/*"
-            .target=${`${this.serverURL}/file`}
+            .target=${`${this.serverURL}/add/file`}
             .headers=${{ path: this.context.path }}
             @upload-success=${this.onFileUpload}
             @upload-error=${(e: any) => {
