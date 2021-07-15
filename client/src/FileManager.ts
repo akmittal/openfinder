@@ -50,6 +50,7 @@ export class FileManager extends LitElement {
   @property({ type: String }) currentContext = 'dir';
   @property({ type: String }) searchTerm = '';
   @property({ type: Boolean }) isLoading: boolean = false;
+  @property({ type: Object }) observerable: any = {};
   __draggingElement: any;
   __movedlocation: any = {};
 
@@ -79,14 +80,18 @@ export class FileManager extends LitElement {
 
   firstUpdated() {
     if (this.searchTextField) {
-      fromEvent(this.searchTextField, 'input')
-        .pipe(
-          map((event: any) => event.target.value),
-          debounceTime(300),
-          distinctUntilChanged()
-        )
-        .subscribe(this.handleSearch);
+      this.handleSearchAddEvent();
     }
+  }
+
+  handleSearchAddEvent() {
+    this.observerable = fromEvent(this.searchTextField, 'input')
+      .pipe(
+        map((event: any) => event.target.value),
+        debounceTime(300),
+        distinctUntilChanged()
+      )
+      .subscribe(this.handleSearch);
   }
 
   attributeChangedCallback(name: string, oldval: any, newval: any) {
@@ -382,9 +387,9 @@ export class FileManager extends LitElement {
     if (this.searchTerm.length > 0) {
       this.currentContext = 'search';
       this.files = (
-        await (
-          await fetch(`${this.serverURL}/search?key=${this.searchTerm}`)
-        ).json()
+        await this.fetchContent(`${this.serverURL}/search`, {
+          searchKey: this.searchTerm,
+        })
       ).data;
     } else {
       this.reloadFiles();
@@ -680,6 +685,8 @@ export class FileManager extends LitElement {
             if (this.searchTerm.length > 0) {
               this.searchTextField.value = '';
               this.searchTerm = '';
+              this.observerable.unsubscribe();
+              this.handleSearchAddEvent();
               this.currentContext = 'dir';
             }
           }}
