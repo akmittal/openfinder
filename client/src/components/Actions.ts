@@ -36,19 +36,19 @@ export class Actions extends LitElement {
             detail: e.target.getAttribute('data-action'),
           });
           this.dispatchEvent(event);
-          console.log(e.target.getAttribute('data-action'));
+
         }}
       >
-        <vaadin-button data-action="new-subfolder" class="border">
+        <vaadin-button data-action="New Subfolder" class="border">
           <iron-icon icon="add" slot="prefix"></iron-icon>
           New Subfolder
         </vaadin-button>
         ${this.checkDirectory()
-          ? html`<vaadin-button data-action="rename-Directory">
+          ? html`<vaadin-button data-action="Rename Directory">
                 <iron-icon icon="find-replace" slot="prefix"></iron-icon>
                 Rename Directory
               </vaadin-button>
-              <vaadin-button data-action="delete-Directory">
+              <vaadin-button data-action="Delete Directory">
                 <iron-icon
                   icon="icons:delete-forever"
                   slot="prefix"
@@ -64,28 +64,28 @@ export class Actions extends LitElement {
         ${this.context === 'file'
           ? this.selectedItemType !== 'video'
             ? html`
-                <vaadin-button data-action="rename">
+                <vaadin-button data-action="Rename">
                   <iron-icon icon="find-replace" slot="prefix"></iron-icon>
                   Rename
                 </vaadin-button>
-                <vaadin-button data-action="change-alt">
+                <vaadin-button data-action="Change Alt">
                   <iron-icon icon="create" slot="prefix"></iron-icon>
                   Change Alt
                 </vaadin-button>
-                <vaadin-button data-action="replace">
+                <vaadin-button data-action="Replace">
                   <iron-icon icon="find-replace" slot="prefix"></iron-icon>
                   Replace
                 </vaadin-button>
-                <vaadin-button data-action="download">
+                <vaadin-button data-action="Download">
                   <iron-icon icon="visibility" slot="prefix"></iron-icon>
                   Download
                 </vaadin-button>
               `
-            : html` <vaadin-button data-action="rename">
+            : html` <vaadin-button data-action="Rename">
                   <iron-icon icon="find-replace" slot="prefix"></iron-icon>
                   Rename
                 </vaadin-button>
-                <vaadin-button data-action="download">
+                <vaadin-button data-action="Download">
                   <iron-icon icon="visibility" slot="prefix"></iron-icon>
                   Download
                 </vaadin-button>`

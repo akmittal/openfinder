@@ -62,6 +62,12 @@ export class FileManager extends LitElement {
   toggleQueueDialog() {
     this.alertDialogState = !this.alertDialogState;
   }
+
+  handleCloseModalState() {
+    this.inputModalState = false;
+    this.uploadModalState = false;
+  }
+
   onFileUpload = (evt: CustomEvent) => {
     const items = this.vaadinUpload.files.map((file: any) => !file.complete);
     if (items.length === this.vaadinUpload.files.length) {
@@ -393,36 +399,38 @@ export class FileManager extends LitElement {
   };
   handleFileAction = (e: CustomEvent) => {
     switch (e.detail) {
-      case 'new-subfolder':
+      case 'New Subfolder':
         this.inputModalType = e.detail;
         this.toggleInputModal();
         break;
-      case 'rename':
+      case 'Rename':
         this.inputModalType = e.detail;
         this.toggleInputModal();
         break;
-      case 'rename-Directory':
+      case 'Rename Directory':
         this.inputModalType = e.detail;
+        this.OprType = e.detail;
         this.toggleInputModal();
         break;
-      case 'delete-Directory':
+      case 'Delete Directory':
         this.OprType = e.detail;
         this.alertmessage = `Are you sure want to delete this directory ${this.context.path}`;
         this.toggleQueueDialog();
         break;
-      case 'replace':
+      case 'Replace':
         this.inputModalType = e.detail;
         this.toggleUploadModal();
         break;
-      case 'change-alt':
+      case 'Change Alt':
         this.inputModalType = e.detail;
         this.toggleInputModal();
         break;
-      case 'download':
+      case 'Download':
         this.triggerDownload();
         break;
     }
   };
+
   changeAlt = async (description: string) => {
     let url = `${this.serverURL}/meta`;
     let body = {
@@ -441,38 +449,36 @@ export class FileManager extends LitElement {
 
   handleInoutSelect = async (evt: CustomEvent) => {
     switch (this.inputModalType) {
-      case 'new-subfolder':
+      case 'New Subfolder':
         await this.createNewSubFolder(evt.detail);
         this.directryKey = Math.random();
-        this.toggleInputModal();
         break;
-      case 'rename':
+      case 'Rename':
         await this.rename(evt.detail);
         this.resetSelection();
-
-        this.toggleInputModal();
         this.reloadFiles();
         break;
-      case 'rename-Directory':
+      case 'Rename Directory':
         this.renameDirKey = evt.detail;
-        this.OprType = 'rename-dir';
         this.alertmessage = `Are you sure want to rename this directory ${this.context.path}`;
-        this.toggleInputModal();
         this.toggleQueueDialog();
         break;
-      case 'replace':
+      case 'Replace':
         this.toggleUploadModal();
         this.reloadFiles();
         this.resetSelection();
         break;
-      case 'change-alt':
+      case 'Change Alt':
         await this.changeAlt(evt.detail);
-        this.toggleInputModal();
         this.reloadFiles();
         this.resetSelection();
         break;
     }
+    if(this.inputModalState) {
+      this.toggleInputModal();
+    }
   };
+
   resetSelection() {
     this.activeItem = null;
     this.currentContext = 'dir';
@@ -511,7 +517,7 @@ export class FileManager extends LitElement {
   async handleDialogAction(e: any) {
     if (e.detail.action === 'confirm') {
       switch (this.OprType) {
-        case 'delete':
+        case 'Delete':
           await this.delete(e);
           if (this.currentContext === 'search' && this.searchTerm.length > 0) {
             this.handleSearch(this.searchTerm);
@@ -530,14 +536,14 @@ export class FileManager extends LitElement {
           this.context = { path: '/' };
           this.reloadFiles();
           break;
-        case 'rename-dir':
+        case 'Rename Directory':
           await this.renameDirectory(this.renameDirKey);
           this.context = { path: '/' };
           this.directryKey = Math.random();
           this.renameDirKey = '';
           this.reloadFiles();
           break;
-        case 'delete-Directory':
+        case 'Delete Directory':
           await this.deleteDirectory();
           this.context = { path: '/' };
           this.directryKey = Math.random();
@@ -554,7 +560,7 @@ export class FileManager extends LitElement {
         this.alertmessage = `Are you sure want to move this Image ${this.activeItem.name}, 
         To new location.. ${this.__movedlocation.dropTargetItem.path}`;
         break;
-      case 'delete':
+      case 'Delete':
         this.alertmessage = `Are you sure want to delete this Image... ${this.activeItem.name}`;
         break;
       case 'DragDir':
@@ -631,14 +637,18 @@ export class FileManager extends LitElement {
   render() {
     return html`
       <input-modal
+        .header=${this.inputModalType}
         .opened=${this.inputModalState}
         @onsubmit=${this.handleInoutSelect}
+        @onclose=${this.handleCloseModalState}
       ></input-modal>
       <input-modal-upload
         .opened=${this.uploadModalState}
+        .header=${this.inputModalType}
         serverURL=${this.serverURL}
         imagePath=${this.activeItem ? this.activeItem.path : ''}
         @onsubmit=${this.handleInoutSelect}
+        @onclose=${this.handleCloseModalState}
       ></input-modal-upload>
       <queue-dialog
         .message=${this.alertmessage ? this.alertmessage : ''}
@@ -721,6 +731,7 @@ export class FileManager extends LitElement {
                       @click=${(e: any) => {
                         this.activeItem = file;
                         this.currentContext = 'file';
+                        console.log('cliked on img ::', this.activeItem)
                       }}
                       @drag=${(e: any) => {
                         e.preventDefault();
