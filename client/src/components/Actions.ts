@@ -28,7 +28,6 @@ export class Actions extends LitElement {
       <div
         class="actions"
         @click=${(e: any) => {
-          console.log(e.target.tagName);
           if (e.target.tagName != 'VAADIN-BUTTON') {
             return;
           }

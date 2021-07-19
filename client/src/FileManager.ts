@@ -731,7 +731,6 @@ export class FileManager extends LitElement {
                       @click=${(e: any) => {
                         this.activeItem = file;
                         this.currentContext = 'file';
-                        console.log('cliked on img ::', this.activeItem)
                       }}
                       @drag=${(e: any) => {
                         e.preventDefault();
