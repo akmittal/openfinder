@@ -14,11 +14,15 @@ export class InputModal extends LitElement {
   @query('vaadin-dialog') dialog: any;
   @query('vaadin-text-field') input: any;
   @property({ type: Boolean }) opened: boolean = false;
-  @property({ type: String }) label: string = '';
+  @property({ type: String }) header: string = '';
 
   static styles = css`
     :host {
       display: flex;
+    }
+    .mdc-dialog .mdc-dialog__container .mdc-dialog__surface .mdc-dialog__title {
+      font-size: 1.5rem;
+      font-weight: 500;
     }
   `;
   checkInput() {
@@ -43,11 +47,14 @@ export class InputModal extends LitElement {
   handleCloseDialog() {
     this.input.value = '';
     this.input.invalid = false;
+    const event = new CustomEvent('onclose', { detail: true });
+    this.dispatchEvent(event);
   }
 
   render() {
     return html`
-      <mwc-dialog .open=${this.opened} @closed=${this.handleCloseDialog}>
+      <mwc-dialog .open=${this.opened} @closed=${this.handleCloseDialog} .heading=${this.header}>
+      <hr></hr>
         <vaadin-text-field
           error-message="Invalid Input"
           @keypress=${(e: KeyboardEvent) => {

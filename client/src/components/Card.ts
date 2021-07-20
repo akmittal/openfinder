@@ -66,7 +66,7 @@ export class Card extends LitElement {
     const event = new CustomEvent('ondelete', {
       detail: {
         data: e.target.getAttribute('data-action'),
-        action: 'delete',
+        action: 'Delete',
         file : this.data
       },
       bubbles: true,
@@ -107,7 +107,7 @@ export class Card extends LitElement {
             <iron-icon icon="content-copy" slot="prefix"></iron-icon>
             Copy Link
           </vaadin-button>
-          <vaadin-button @click=${this.handleDeleteAction} data-action="delete">
+          <vaadin-button @click=${this.handleDeleteAction} data-action="Delete">
             <iron-icon icon="icons:delete-forever" slot="prefix"></iron-icon>
             Delete
           </vaadin-button>

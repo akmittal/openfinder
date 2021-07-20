@@ -17,6 +17,7 @@ export class InputModal extends LitElement {
   @property({ type: Object }) context = { path: '/' };
   @property({ type: String }) imagePath = '';
   @property({ type: String }) serverURL = '';
+  @property({ type: String }) header = '';
 
 
   onFileUpload = (evt: CustomEvent) => {
@@ -33,9 +34,14 @@ export class InputModal extends LitElement {
     }
   `;
 
+  handleCloseDialog() {
+    const event = new CustomEvent('onclose', { detail: true });
+    this.dispatchEvent(event);
+  }
+
   render() {
     const url = `${this.serverURL}/replace?path=${this.imagePath}`;
-    return html` <mwc-dialog .open=${this.opened}>
+    return html` <mwc-dialog .open=${this.opened} @closed=${this.handleCloseDialog} .heading=${this.header}>
       <vaadin-upload
         style="overflow:visible"
         data-action="edit"
