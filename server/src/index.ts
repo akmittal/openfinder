@@ -358,12 +358,13 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     }
   });
 
-  router.route("/search").get(async (req: Request, res: Response) => {
+  router.route("/search").post(async (req: Request, res: Response) => {
     try {
-      let keyword: any = req.query.key;
+      const { searchKey } = req.body;
+
       let filterCondition = {
-        name: `%${keyword}%`,
-        path: `%${keyword}%`,
+        name: `%${searchKey}%`,
+        path: `%${searchKey}%`,
       };
       let files = await connection
         .getRepository("image")
@@ -378,7 +379,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
         files = files
           .filter((file: any) => {
             if (fs.existsSync(join(uploadPath, file.path))) {
-              return file;
+              return true;
             }
           })
           .map(async (file: any, index: any) => {
