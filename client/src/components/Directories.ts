@@ -66,7 +66,16 @@ export class Directories extends LitElement {
   }
   async getDirs(context: string) {
     this.context = context;
-    const res = await fetch(`${this.serverURL}/directory?context=${context}`);
+    let opts = {
+      context: context,
+    };
+    const res = await fetch(`${this.serverURL}/get/directory`, {
+      method: 'POST',
+      body: JSON.stringify(opts),
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
     return await res.json();
   }
   dataProvider = async (item: any, callback: Function) => {
@@ -86,7 +95,7 @@ export class Directories extends LitElement {
         },
       ];
     } else {
-      data = await this.getDirs(`/${item.parentItem.path}`);
+      data = await this.getDirs(`${item.parentItem.path}`);
       data = data.data.map((dir: any) => ({
         ...dir,
         children: dir.isLeafNode ? null : [],

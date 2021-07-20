@@ -19,7 +19,7 @@ import { Connection, createConnection } from "typeorm";
 import mime from "mime";
 import { CompressImage } from "./util/compress";
 import { spawnSync } from "child_process";
-import { filterFolderList, allowedMimeTypes } from './config/FileConfig';
+import { filterFolderList, allowedMimeTypes } from "./config/FileConfig";
 // const app = express();
 // createConnection().then((connection) => {
 //   app.use("/", bootstrap(connection, resolve("./uploads")));
@@ -70,7 +70,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
       if (path === "undefined") {
         path = "/";
       }
-
+      console.log("herader ::::");
       const resolvedPath = join(uploadPath, path);
       if (!fs.existsSync(resolvedPath)) {
         fs.mkdirSync(resolvedPath, { recursive: true });
@@ -100,7 +100,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
     const fileMimeType = file.mimetype.split("/")[0];
     if (allowedMimeTypes.includes(fileMimeType)) {
       if (!fs.existsSync(resolvedPath)) cb(null, true);
-      else cb(new Error("File exits already; Please try another one"));
+      else cb(new Error("File exists already; Please try another one"));
     } else cb(new Error("Invalid file format"));
   }
 
@@ -113,7 +113,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
   }).single("file");
 
   router
-    .route("/directory")
+    .route("/add/directory")
     .post((req: Request, res: Response) => {
       const { context, dir } = req.body;
       const resolvedPath = join(uploadPath, context, dir);
@@ -121,22 +121,29 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
         fs.mkdirSync(resolvedPath);
         return res.json({ msg: "directory created successfully" });
       }
-      res.statusMessage = "Directory already exit";
-      return res.status(500).send("file already exits");
-    })
-    .get((req: Request, res: Response) => {
-      const context: any = req.query.context;
-      const resolvedPath = join(uploadPath, context);
-      let dirs = getDirectories(resolvedPath).map((dir) => ({
-        name: dir,
-        path: join(resolvedPath, dir).replace(uploadPath, ""),
-        isLeafNode: getDirectories(join(resolvedPath, dir)).length === 0,
-      }));
-      if (dirs.length === 0) {
-        dirs = null;
-      }
-      res.json({ data: dirs });
+      res.statusMessage = "Directory already exists";
+      return res.status(500).send("file already exists");
     });
+
+  router.route("/get/directory").post((req: Request, res: Response) => {
+    const { context } = req.body;
+    try {
+      if (context) {
+        const resolvedPath = join(uploadPath, context);
+        let dirs = getDirectories(resolvedPath).map((dir) => ({
+          name: dir,
+          path: join(resolvedPath, dir).replace(uploadPath, ""),
+          isLeafNode: getDirectories(join(resolvedPath, dir)).length === 0,
+        }));
+        if (dirs.length === 0) {
+          dirs = null;
+        }
+        res.json({ data: dirs });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   router.route("/rename").post(async (req: Request, res: Response) => {
     let { context, filename, newFilename, filePath } = req.body;
@@ -158,7 +165,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .execute();
         res.json({ msg: "done" });
       } else {
-        throw new Error("Image Already exit");
+        throw new Error("Image Already exists");
       }
     } catch (e) {
       console.log("Error in Rename op", e);
@@ -239,7 +246,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           res.json({ msg: "directory deleted successfully" });
         }
         if (status !== 0) {
-          throw new Error("No such file or directory exit");
+          throw new Error("No such file or directory exists");
         }
       } catch (e) {
         console.error("Error in Delete Directory Operation", e);
@@ -264,7 +271,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .execute();
         res.json({ msg: "done" });
       } else {
-        throw new Error("Image Already exit");
+        throw new Error("Image Already exists");
       }
     } catch (err) {
       console.log("Error in Move Operation", err);
@@ -342,7 +349,7 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .execute();
         res.json({ msg: "done" });
       } else {
-        throw new Error("Directory already exits");
+        throw new Error("Directory already exists");
       }
     } catch (err) {
       console.error("Error in move directory operation", err);
@@ -407,11 +414,10 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
   });
 
   router
-    .route("/file")
+    .route("/add/file")
     .post((req: Request & { destinationPath: string }, res: Response) => {
       upload(req, res, async (err: any) => {
         if (err) {
-          console.log("aaaaaaaaaaa", err);
           return res.status(500).json(err.message);
         }
         const r = await connection
@@ -428,10 +434,12 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           .execute();
         res.json({ r });
       });
-    })
-    .get(async (req: Request, res: Response) => {
-      try {
-        const context: any = req.query.context;
+    });
+
+  router.route("/get/file").post(async (req: Request, res: Response) => {
+    try {
+      const context: any = req.body.context;
+      if (context) {
         const resolvedDir = join(uploadPath, context);
         const files = getFiles(resolvedDir).map(async (file: any) => {
           const absPath = join(resolvedDir, file.name);
@@ -446,7 +454,6 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
           } catch (e) {
             console.error(e);
           }
-
           const xmp = await readDescription(absPath.replace(uploadPath, ""));
 
           return {
@@ -465,10 +472,13 @@ export function bootstrap(connection: Connection, uploadPath: string): Router {
         });
         const data = await Promise.all(files);
         res.json({ data });
-      } catch (e) {
-        console.error(e);
+      } else {
+        throw new Error("Context is empty");
       }
-    });
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   router.post("/meta", async (req: Request, res: Response) => {
     try {
