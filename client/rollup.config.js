@@ -5,6 +5,8 @@ import { createSpaConfig } from '@open-wc/building-rollup';
 // use createBasicConfig to do regular JS to JS bundling
 // import { createBasicConfig } from '@open-wc/building-rollup';
 
+const isDev = process.env.NODE_ENV !== "production"
+
 const baseConfig = createSpaConfig({
   // use the outputdir option to modify where files are output
   // outputDir: 'dist',
@@ -18,21 +20,25 @@ const baseConfig = createSpaConfig({
 
   // set to true to inject the service worker registration into your index.html
   injectServiceWorker: false,
-  workbox: false,
-  polyfillsLoader: false,
-  html: false
-});
+  workbox: isDev,
+  polyfillsLoader: isDev,
+  html: isDev
 
-export default merge(baseConfig, {
-  // if you use createSpaConfig, you can use your index.html as entrypoint,
-  // any <script type="module"> inside will be bundled by rollup
-  input: './index.html',
-  // output: {
-  //   file: "./dist/bundle.js",
-  //   dir: undefined
-  // }
-
-  // alternatively, you can use your JS as entrypoint for rollup and
-  // optionally set a HTML template manually
-  // input: './app.js',
 });
+let config;
+if (!isDev) {
+  config = {
+    input: './out-tsc/src/file-manager.js',
+    output: {
+      file: "./dist/bundle.js",
+      dir: undefined
+    }
+  }
+} else {
+  config = {
+    input: './index.html',
+
+  }
+}
+
+export default merge(baseConfig, config);

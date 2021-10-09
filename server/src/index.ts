@@ -1,25 +1,35 @@
-import express, { Request, Response, Router } from "express";
+import {
+  default as express,
+  Request,
+  Response,
+  Router,
+  json,
+  urlencoded,
+  static as staticServer,
+  /* @ts-ignore */
+} from "express";
+/* @ts-ignore */
 import multer, { FileFilterCallback } from "multer";
 import fs, { readdirSync } from "fs";
-import { join, resolve } from "path";
+import { join, resolve, extname } from "path";
+/* @ts-ignore */
 import cors from "cors";
 import sharp from "sharp";
-import { Connection, createConnection } from "typeorm";  
+import { Connection, createConnection } from "typeorm";
 import mime from "mime";
+import { CompressImage } from "./util/compress";
+import { spawnSync } from "child_process";
+import { filterFolderList, allowedMimeTypes } from "./config/FileConfig";
+// const app = express();
+// createConnection().then((connection) => {
+//   app.use("/", bootstrap(connection, resolve("./uploads")));
+//   app.listen(5000, () => {
+//     console.log("started");
+//   });
+// });
 
-
-const app = express()
-createConnection().then((connection) => {
-  app.use("/", bootstrap(connection, resolve("./uploads")))
-  app.listen(5000, () => {
-    console.log("started")
-  })
-})
-
-
-export function bootstrap(connection: Connection, uploadPath:string):Router {
- 
-  const router = express.Router()
+export function bootstrap(connection: Connection, uploadPath: string): Router {
+  const router = Router();
 
   router.use(cors());
 
@@ -32,30 +42,35 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
 
   const getDirectories = (source: string) =>
     readdirSync(source, { withFileTypes: true })
-      .filter((dirent) => dirent.isDirectory())
+      .filter(
+        (dirent: any) =>
+          dirent.isDirectory() && !filterFolderList.includes(dirent.name)
+      )
       .map((dirent) => dirent.name);
 
   const getFiles = (source: string) =>
     readdirSync(source, { withFileTypes: true }).filter(
       (dirent) =>
         !dirent.isDirectory() &&
-        mime.getType(join(source, dirent.name))?.startsWith("image/")
+        allowedMimeTypes.includes(
+          mime.getType(join(source, dirent.name))?.split("/")[0]
+        )
     );
 
-  router.use(express.json());
-  router.use(express.urlencoded({ extended: true }));
+  router.use(json());
+  router.use(urlencoded({ extended: true }));
 
   const storage = multer.diskStorage({
     destination: async (
       req: Request & { destinationDir: string },
-      file,
-      cb
+      file: any,
+      cb: any
     ) => {
       let path: any = req.header("path") || "/";
       if (path === "undefined") {
         path = "/";
       }
-
+      console.log("herader ::::");
       const resolvedPath = join(uploadPath, path);
       if (!fs.existsSync(resolvedPath)) {
         fs.mkdirSync(resolvedPath, { recursive: true });
@@ -65,12 +80,10 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     },
     filename: (
       req: Request & { destinationDir: string; destinationPath: string },
-      file,
-      cb
+      file: any,
+      cb: any
     ) => {
-      const filename = `${removeExtension(
-        file.originalname
-      )}-${Date.now()}.${getExtension(file.originalname)}`;
+      const filename = file.originalname;
       req.destinationPath = join(req.destinationDir, filename);
       cb(null, filename);
     },
@@ -78,57 +91,336 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
 
   function fileFilter(
     req: Request,
+    /* @ts-ignore */
     file: Express.Multer.File,
     cb: FileFilterCallback
   ) {
-    if (file.mimetype.split("/")[0] === "image") {
-      cb(null, true);
-    } else {
-      cb(new Error("Invalid file format"));
-    }
+    const path: any = req.header("path") || "/";
+    const resolvedPath = join(uploadPath, path, file.originalname);
+    const fileMimeType = file.mimetype.split("/")[0];
+    if (allowedMimeTypes.includes(fileMimeType)) {
+      if (!fs.existsSync(resolvedPath)) cb(null, true);
+      else cb(new Error("File exists already; Please try another one"));
+    } else cb(new Error("Invalid file format"));
   }
 
+  // nginx client_max_body_size to be set slightly higher than 2G
+  // so that the app catches it instead of nginx
   const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: { fileSize: 2 * 1000 * 1024 * 1024 },
+    fileFilter: fileFilter,
+  }).single("file");
+
+  router
+    .route("/add/directory")
+    .post((req: Request, res: Response) => {
+      const { context, dir } = req.body;
+      const resolvedPath = join(uploadPath, context, dir);
+      if (!fs.existsSync(resolvedPath)) {
+        fs.mkdirSync(resolvedPath);
+        return res.json({ msg: "directory created successfully" });
+      }
+      res.statusMessage = "Directory already exists";
+      return res.status(500).send("file already exists");
+    });
+
+  router.route("/get/directory").post((req: Request, res: Response) => {
+    const { context } = req.body;
+    try {
+      if (context) {
+        const resolvedPath = join(uploadPath, context);
+        let dirs = getDirectories(resolvedPath).map((dir) => ({
+          name: dir,
+          path: join(resolvedPath, dir).replace(uploadPath, ""),
+          isLeafNode: getDirectories(join(resolvedPath, dir)).length === 0,
+        }));
+        if (dirs.length === 0) {
+          dirs = null;
+        }
+        res.json({ data: dirs });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  router.route("/rename").post(async (req: Request, res: Response) => {
+    let { context, filename, newFilename, filePath } = req.body;
+    filePath = decodeURIComponent(filePath);
+    try {
+      if (!newFilename.includes(".")) {
+        newFilename = `${newFilename}${extname(filename)}`;
+      }
+      const resolvedSource = join(uploadPath, context, filename);
+      const resolvedTarget = join(uploadPath, context, newFilename);
+      if (!fs.existsSync(resolvedTarget)) {
+        fs.renameSync(resolvedSource, resolvedTarget);
+        await connection
+          .getRepository("image")
+          .createQueryBuilder()
+          .update("image")
+          .set({ name: newFilename, path: join(context, newFilename) })
+          .where("path=:path", { path: filePath })
+          .execute();
+        res.json({ msg: "done" });
+      } else {
+        throw new Error("Image Already exists");
+      }
+    } catch (e) {
+      console.log("Error in Rename op", e);
+      res.statusMessage = e;
+      res.status(500).send(e.toString());
+    }
+  });
+  // another multer instance for file replace
+  const imgReplaceMulterInst = multer({
+    limits: { fileSize: 20 * 1024 * 1024 },
     fileFilter: fileFilter,
   });
 
   router
-    .route("/directory")
-    .post((req, res) => {
-      const { context, dir } = req.body;
-      const resolvedPath = join(uploadPath, context, dir);
-      fs.mkdirSync(resolvedPath);
-      res.json({ msg: "hello" });
-    })
-    .get((req, res) => {
-      const context: any = req.query.context;
-      const resolvedPath = join(uploadPath, context);
-      let dirs = getDirectories(resolvedPath).map((dir) => ({
-        name: dir,
-        path: join(resolvedPath, dir).replace(uploadPath, ""),
-        isLeafNode: getDirectories(join(resolvedPath, dir)).length === 0,
-      }));
-      if (dirs.length === 0) {
-        dirs = null;
-      }
-      res.json({ data: dirs });
-    });
+    .route("/replace")
+    .post(
+      imgReplaceMulterInst.single("file"),
+      async (req: Request, res: Response) => {
+        try {
+          let imagePath: any = req.query.path;
+          imagePath = decodeURIComponent(imagePath);
+          let file = req.file;
+          const resolvedSource = join(uploadPath, imagePath);
 
-  router.route("/rename").post((req, res) => {
-    const { context, filename, newFilename } = req.body;
-    const resolvedSource = join(uploadPath, context, filename);
-    const resolvedTarget = join(uploadPath, context, newFilename);
-    fs.renameSync(resolvedSource, resolvedTarget);
-    res.json({ msg: "done" });
+          const outStream = fs.createWriteStream(resolvedSource);
+          outStream.write(file.buffer);
+          outStream.end();
+          outStream.on("finish", function (err: any) {
+            if (!err) {
+              res.json({ msg: "done" });
+            }
+          });
+        } catch (err) {
+          res.status(500).send(err.toString());
+          console.error(err);
+        }
+      }
+    );
+  router.route("/delete").post(async (req: Request, res: Response) => {
+    let { context, filename, filePath } = req.body;
+    filePath = decodeURIComponent(filePath);
+    try {
+      const resolvedSource = join(uploadPath, filePath);
+      fs.unlinkSync(resolvedSource);
+      await connection
+        .getRepository("image")
+        .createQueryBuilder()
+        .delete()
+        .where("path=:path", { path: filePath })
+        .execute();
+      res.json({ msg: "done" });
+    } catch (e) {
+      console.log("Error in Delete Operation", e);
+      res.status(500).send(e.toString());
+    }
   });
 
   router
-    .route("/file")
-    .post(
-      upload.single("file"),
-      async (req: Request & { destinationPath: string }, res) => {
+    .route("/delete/directory")
+    .post(async (req: Request, res: Response) => {
+      let { context } = req.body;
+      const filterCondition = {
+        path: `${context}%`,
+      };
+      try {
+        const resolvedSource = join(uploadPath, context);
+        const { stderr, stdout, status } = spawnSync("rm", [
+          "-r",
+          resolvedSource,
+        ]);
+        if (status === 0) {
+          await connection
+            .getRepository("image")
+            .createQueryBuilder()
+            .delete()
+            .where("path like :path", filterCondition)
+            .execute();
+          res.json({ msg: "directory deleted successfully" });
+        }
+        if (status !== 0) {
+          throw new Error("No such file or directory exists");
+        }
+      } catch (e) {
+        console.error("Error in Delete Directory Operation", e);
+        res.statusMessage = e;
+        res.status(500).send(e);
+      }
+    });
+
+  router.route("/move/image").post(async (req: Request, res: Response) => {
+    let { context, filename, newPath } = req.body;
+    const resolvedSource = join(uploadPath, context, filename);
+    const resolvedTarget = join(uploadPath, newPath, filename);
+    try {
+      if (!fs.existsSync(resolvedTarget)) {
+        fs.renameSync(resolvedSource, resolvedTarget);
+        await connection
+          .getRepository("image")
+          .createQueryBuilder()
+          .update("image")
+          .set({ path: join(newPath, filename) })
+          .where("path=:path", { path: join(context, filename) })
+          .execute();
+        res.json({ msg: "done" });
+      } else {
+        throw new Error("Image Already exists");
+      }
+    } catch (err) {
+      console.log("Error in Move Operation", err);
+      res.statusMessage = err;
+      res.status(500).send(err.toString());
+    }
+  });
+
+  router
+    .route("/rename/directory")
+    .post(async (req: Request, res: Response) => {
+      let { context, newDirname, leafNode } = req.body;
+      const resolvedCurrDir = join(uploadPath, context);
+      const lastPosition = context.lastIndexOf(leafNode);
+      const newPath = context.substring(0, lastPosition) + newDirname;
+
+      const resolvedTarget = join(
+        uploadPath,
+        context.substring(0, lastPosition),
+        newDirname
+      );
+      try {
+        if (!fs.existsSync(resolvedTarget)) {
+          fs.renameSync(resolvedCurrDir, resolvedTarget);
+
+          await connection
+            .getRepository("image")
+            .createQueryBuilder()
+            .update("image")
+            .set({
+              path: () =>
+                `CONCAT('${newPath}',SUBSTR(path,${
+                  context.length + 1
+                },LENGTH(path)) )`,
+            })
+            .where(`path LIKE :path`, { path: `${context}%` })
+            .execute();
+
+          res.json({ msg: "done" });
+        } else {
+          throw new Error("Directory already exits");
+        }
+      } catch (err) {
+        console.error("Error in rename directory operation", err);
+        res.statusMessage = err;
+        res.status(500).send(err.toString());
+      }
+    });
+
+  router.route("/move/directory").post(async (req: Request, res: Response) => {
+    let { context, newPath, currentDir, leafNode } = req.body;
+    const resolvedCurrDir = join(uploadPath, currentDir);
+    let lastIndexNode = currentDir.lastIndexOf(leafNode);
+    const sublastnode = currentDir.substring(
+      lastIndexNode - 1,
+      currentDir.length
+    );
+    if (newPath === "/") {
+      newPath = "";
+    }
+    const resolvedTarget = join(uploadPath, newPath, sublastnode);
+
+    try {
+      if (!fs.existsSync(resolvedTarget)) {
+        fs.renameSync(resolvedCurrDir, resolvedTarget);
+        await connection
+          .getRepository("image")
+          .createQueryBuilder()
+          .update("image")
+          .set({
+            path: () =>
+              `CONCAT('${newPath}',SUBSTR(path,${lastIndexNode},LENGTH(path)) )`,
+          })
+          .where(`path LIKE :path`, { path: `${currentDir}%` })
+          .execute();
+        res.json({ msg: "done" });
+      } else {
+        throw new Error("Directory already exists");
+      }
+    } catch (err) {
+      console.error("Error in move directory operation", err);
+      res.statusMessage = err;
+      res.status(500).send(err);
+    }
+  });
+
+  router.route("/search").post(async (req: Request, res: Response) => {
+    try {
+      const { searchKey } = req.body;
+
+      let filterCondition = {
+        name: `%${searchKey}%`,
+        path: `%${searchKey}%`,
+      };
+      let files = await connection
+        .getRepository("image")
+        .createQueryBuilder("image")
+        .select(["image.name", "image.path", "image.alt"])
+        .where(
+          "image.name like :name OR image.path like :path",
+          filterCondition
+        )
+        .getMany();
+      if (files) {
+        files = files
+          .filter((file: any) => {
+            if (fs.existsSync(join(uploadPath, file.path))) {
+              return true;
+            }
+          })
+          .map(async (file: any, index: any) => {
+            const absPath = join(uploadPath, file.path);
+            const filestats = fs.statSync(absPath);
+            const fileType = await mime.getType(absPath);
+            let imageMeta: any = { width: -1, height: -1 };
+
+            if (fileType.split("/")[0] !== "video") {
+              const image = sharp(absPath);
+              imageMeta = await image.metadata();
+            }
+            return {
+              name: file.name,
+              path: absPath
+                .replace(uploadPath, "")
+                .replace(file.name, encodeURIComponent(file.name)),
+              size: filestats.size,
+              modified: filestats.mtime,
+              width: imageMeta.width,
+              height: imageMeta.height,
+              description: file.alt,
+              type: fileType?.split("/")[0],
+            };
+          });
+      }
+      const data = await Promise.all(files);
+      res.json({ data });
+    } catch (err) {
+      res.send(err);
+      console.error(err);
+    }
+  });
+
+  router
+    .route("/add/file")
+    .post((req: Request & { destinationPath: string }, res: Response) => {
+      upload(req, res, async (err: any) => {
+        if (err) {
+          return res.status(500).json(err.message);
+        }
         const r = await connection
           .getRepository("image")
           .createQueryBuilder()
@@ -142,39 +434,52 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
           })
           .execute();
         res.json({ r });
-      }
-    )
-    .get(async (req, res) => {
-      try {
-        const context: any = req.query.context;
+      });
+    });
+
+  router.route("/get/file").post(async (req: Request, res: Response) => {
+    try {
+      const context: any = req.body.context;
+      if (context) {
         const resolvedDir = join(uploadPath, context);
         const files = getFiles(resolvedDir).map(async (file: any) => {
           const absPath = join(resolvedDir, file.name);
           const filestats = fs.statSync(absPath);
+          const fileType = await mime.getType(absPath);
           let imageMeta: any = { width: -1, height: -1 };
           try {
-            const image = sharp(absPath);
-            imageMeta = await image.metadata();
-          } catch (e) {}
-
+            if (fileType.split("/")[0] !== "video") {
+              const image = sharp(absPath);
+              imageMeta = await image.metadata();
+            }
+          } catch (e) {
+            console.error(e);
+          }
           const xmp = await readDescription(absPath.replace(uploadPath, ""));
 
           return {
             ...file,
-            path: absPath.replace(uploadPath, ""),
+
+            path: absPath
+              .replace(uploadPath, "")
+              .replace(file.name, encodeURIComponent(file.name)),
             size: filestats.size,
             modified: filestats.mtime,
             width: imageMeta.width,
             height: imageMeta.height,
             description: xmp,
+            type: fileType?.split("/")[0],
           };
         });
         const data = await Promise.all(files);
         res.json({ data });
-      } catch (e) {
-        console.error(e);
+      } else {
+        throw new Error("Context is empty");
       }
-    });
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   router.post("/meta", async (req: Request, res: Response) => {
     try {
@@ -188,9 +493,12 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
     }
   });
 
-  router.use("/static", express.static(uploadPath));
- 
-
+  router.use(
+    "/static",
+    staticServer(uploadPath, {
+      cacheControl: false,
+    })
+  );
 
   async function readDescription(path: string) {
     const res: any = await connection
@@ -204,5 +512,5 @@ export function bootstrap(connection: Connection, uploadPath:string):Router {
       .getRepository("image")
       .update({ path }, { alt: description });
   }
-  return router
+  return router;
 }
